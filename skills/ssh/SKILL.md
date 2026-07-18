@@ -8,10 +8,19 @@ disable-model-invocation: true
 
 Use only from local Git project on platform with Python 3, Git, and OpenSSH client tools. Remote target must provide POSIX shell semantics (`cd --`, `exec`) and configured absolute POSIX paths. Scope: configured SSH target operations only; no persistent session, setup mutation, arbitrary remote command, or non-SSH deployment workflow.
 
+## Prerequisite setup
+
+Before first target selection in a session, collect prerequisite setup. Do not run `validate` until complete.
+
+1. Check target configuration. Require literal `SSH_HOST` and `SSH_<ENVIRONMENT>_FOLDER` variables in untracked root `.env`. `.env` must be owner-only. If validation reports unsafe permissions, show proposed `chmod 600 .env`, obtain exact user confirmation, then rerun `validate <target> --confirmed-repair-env-permissions`. Helper repairs only then and continues validation; never repair silently or during other commands.
+2. Ask user for SSH username. This question is mandatory; never infer it from local machine username, Git identity, target name, or any other source. Tell user to configure that exact value as `User` for SSH alias before continuing.
+3. Ask user for private-key file path. This question is mandatory; never infer key path or request key contents. Tell user to configure that exact path as `IdentityFile` for SSH alias before continuing.
+4. Ask user to confirm prerequisites now configured, then continue with selection. Retain confirmed username and key path only for current session; ask again in new session.
+
 ## Select target
 
-1. Run `python3 <skill-dir>/ssh_helper.py validate <target>` from project cwd. Resolve `<skill-dir>` from installed skill location.
-2. Select only when helper exits `0`. Retain target, profile, endpoint, folder, fingerprint, and policy digest bound inside fingerprint. Fingerprint also binds configured SSH alias and effective known-hosts destination. Never write configuration automatically.
+1. Run `python3 <skill-dir>/ssh_helper.py validate <target>` from project cwd. Resolve `<skill-dir>` from installed skill location. On unsafe `.env` permissions, obtain exact user confirmation before retrying with `--confirmed-repair-env-permissions`; no manual `chmod` step required.
+2. Select only when helper exits `0`. Retain target, profile, endpoint, folder, fingerprint, and policy digest bound inside fingerprint. Fingerprint also binds configured SSH alias and effective known-hosts destination. Never write configuration automatically, except confirmed `.env` permission repair during `validate`.
 3. `/ssh close` clears selected target. No interactive shell.
 
 ## Execute

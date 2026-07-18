@@ -1,14 +1,6 @@
 # SSH setup
 
-Preferred config: repo-root `.ssh-skill.json`. Must be existing regular file, not symlink, untracked and ignored by Git, with owner-only permissions where platform supports them (`chmod 600 .ssh-skill.json`). Strict schema; no extra fields:
-
-```json
-{"targets":{"production":{"host":"production-app","folder":"/var/www/app","profile":"laravel"},"docs":{"host":"docs-app","folder":"/srv/docs","profile":"generic"}}}
-```
-
-Target names match `[a-z][a-z0-9_]*`; `host` is SSH config alias, `folder` is absolute safe path, profile is `generic` or `laravel`. Each target owns host, folder, profile. Helper does not source config.
-
-Legacy Laravel compatibility: when `.ssh-skill.json` is absent, root `.env` needs literal values only and must be ignored by Git:
+Required config: repo-root `.env`. It must be an existing regular non-symlink file, Git-untracked and ignored, with owner-only permissions where platform supports them (`chmod 600 .env`). Helper parses literal values only; it never sources `.env`. If `validate` finds group or other access, it reports error without mutation. After exact user confirmation, rerun `validate <environment> --confirmed-repair-env-permissions`; helper applies `chmod 600` and continues validation. Do not use flag without confirmation; other helper modes never repair permissions.
 
 ```dotenv
 SSH_HOST=production-app
@@ -16,9 +8,9 @@ SSH_PRODUCTION_FOLDER=/var/www/app
 SSH_STAGING_FOLDER=/var/www/staging-app
 ```
 
-Environment names match `[a-z][a-z0-9_]*`; `production` maps to `SSH_PRODUCTION_FOLDER`. Legacy targets use Laravel profile. Do not add shell expressions, `~`, `$VAR`, substitutions.
+Environment names match `[a-z][a-z0-9_]*`; `production` maps to `SSH_PRODUCTION_FOLDER`. Targets use Laravel profile. Do not add shell expressions, `~`, `$VAR`, substitutions.
 
-Add `.ssh-skill.json` and legacy `.env` to project `.gitignore`; never commit either. Helper refuses symlinked or Git-tracked files. Set legacy `.env` owner-only too (`chmod 600 .env`).
+Add `.env` to project `.gitignore`; never commit it. Helper refuses symlinked or Git-tracked `.env` files.
 
 SSH identity belongs outside project. `~/.ssh/config.d` is optional local convention, not helper requirement. Example file when using that convention:
 
@@ -30,13 +22,15 @@ Host production-app
     IdentitiesOnly yes
 ```
 
+Before first use in every session, skill must ask user for SSH username and private-key file path. Never infer either from local machine account, Git identity, target alias, or existing configuration; never request private-key contents. User must configure supplied values as `User` and `IdentityFile` for target alias before validation.
+
 If using config.d, main `~/.ssh/config` needs an include line:
 
 ```sshconfig
 Include ~/.ssh/config.d/*
 ```
 
-Adding it needs one-time explicit confirmation. Keep `~/.ssh` at `700`, private keys at `600`, config files at `600`, and `known_hosts` at `600`. Skill gives setup guidance only; never changes SSH or project configuration unless explicitly asked later.
+Adding it needs one-time explicit confirmation. Keep `~/.ssh` at `700`, private keys at `600`, config files at `600`, and `known_hosts` at `600`. Skill gives setup guidance only; only confirmed `validate --confirmed-repair-env-permissions` may change project `.env` permissions.
 
 For unknown host keys, display candidate fingerprint without writing anything:
 

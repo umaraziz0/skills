@@ -56,24 +56,17 @@ npx skills add . --list
 
 `ssh` safely selects configured SSH deployment target and runs only profile-approved operations. It binds target selection to endpoint, folder, and host-key identity; it does not open interactive shell or execute arbitrary remote commands.
 
-**Setup:** Run from local Git project with Python 3, Git, OpenSSH client, SSH key/configuration, and remote POSIX shell. Add untracked, ignored, owner-only `.ssh-skill.json` at project root:
+**Setup:** Run from local Git project with Python 3, Git, OpenSSH client, SSH key/configuration, and remote POSIX shell. Add untracked, ignored, owner-only `.env` at project root:
 
-```json
-{
-  "targets": {
-    "production": {
-      "host": "production-app",
-      "folder": "/var/www/app",
-      "profile": "laravel"
-    }
-  }
-}
+```dotenv
+SSH_HOST=production-app
+SSH_PRODUCTION_FOLDER=/var/www/app
 ```
 
 Set restrictive permissions and ensure Git ignores config:
 
 ```sh
-chmod 600 .ssh-skill.json
+chmod 600 .env
 ```
 
-See [`skills/ssh/references/setup.md`](skills/ssh/references/setup.md) for full schema, legacy `.env` support, SSH client configuration, and host-key verification.
+See [`skills/ssh/references/setup.md`](skills/ssh/references/setup.md) for full `.env` setup, SSH client configuration, and host-key verification.

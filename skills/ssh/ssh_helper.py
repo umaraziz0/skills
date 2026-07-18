@@ -92,7 +92,7 @@ def project_root() -> str:
     return root
 
 
-def untracked_regular_file(root: str, name: str) -> Optional[Path]:
+def untracked_regular_file(root: str, name: str, repair_env_permissions: bool = False) -> Optional[Path]:
     """Return root-local untracked regular file, or None when absent."""
     path = Path(root) / name
     if path.is_symlink():
@@ -101,23 +101,28 @@ def untracked_regular_file(root: str, name: str) -> Optional[Path]:
         return None
     if not path.is_file():
         fail(f"project {name} is not a regular file")
-    if name == ".ssh-skill.json" and os.name == "posix":
-        try:
-            if path.stat().st_mode & 0o077:
-                fail("project .ssh-skill.json must be owner-only (chmod 600)")
-        except OSError:
-            fail("cannot verify project .ssh-skill.json permissions")
     try:
         tracked = subprocess.run(["git", "ls-files", "--error-unmatch", "--", name], cwd=root, text=True, capture_output=True, timeout=CONNECT_TIMEOUT)
     except (OSError, subprocess.TimeoutExpired):
         fail(f"cannot verify project {name} tracking")
     if tracked.returncode == 0:
         fail(f"refusing Git-tracked project {name}")
+    if name == ".env" and os.name == "posix":
+        try:
+            if path.stat().st_mode & 0o077:
+                if not repair_env_permissions:
+                    fail("project .env must be owner-only; after exact user confirmation, rerun validate with --confirmed-repair-env-permissions to apply chmod 600")
+                path.chmod(0o600)
+                if path.stat().st_mode & 0o077:
+                    fail("project .env must be owner-only (chmod 600)")
+                print("repaired project .env permissions to owner-only (chmod 600)")
+        except OSError:
+            fail("cannot verify or repair project .env permissions")
     return path
 
 
-def project_env(root: str) -> Dict[str, str]:
-    env_path = untracked_regular_file(root, ".env")
+def project_env(root: str, repair_env_permissions: bool = False) -> Dict[str, str]:
+    env_path = untracked_regular_file(root, ".env", repair_env_permissions)
     if env_path is None:
         fail("missing project environment file")
     values: Dict[str, str] = {}
@@ -139,26 +144,6 @@ def project_env(root: str) -> Dict[str, str]:
                 value = value[1:-1]
             values[key.strip()] = value
     return values
-
-
-def config_targets(root: str) -> Optional[Dict[str, Dict[str, str]]]:
-    path = untracked_regular_file(root, ".ssh-skill.json")
-    if path is None:
-        return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        fail("invalid .ssh-skill.json")
-    if not isinstance(data, dict) or set(data) != {"targets"} or not isinstance(data["targets"], dict) or not data["targets"]:
-        fail("invalid .ssh-skill.json schema")
-    targets: Dict[str, Dict[str, str]] = {}
-    for environment, entry in data["targets"].items():
-        if not isinstance(environment, str) or not ENV_RE.fullmatch(environment) or not isinstance(entry, dict) or set(entry) != {"host", "folder", "profile"}:
-            fail("invalid .ssh-skill.json target schema")
-        if not all(isinstance(entry[key], str) for key in entry) or not HOST_RE.fullmatch(entry["host"]) or not SAFE_FOLDER_RE.fullmatch(entry["folder"]) or entry["profile"] not in PROFILE_REGISTRY:
-            fail("unsafe .ssh-skill.json target")
-        targets[environment] = {key: entry[key] for key in ("host", "folder", "profile")}
-    return targets
 
 
 def ssh_effective(alias: str) -> Dict[str, str]:
@@ -194,25 +179,18 @@ def ssh_effective(alias: str) -> Dict[str, str]:
     return {**effective, "hostkeyalias": hostkeyalias}
 
 
-def target(environment: str) -> Target:
+def target(environment: str, repair_env_permissions: bool = False) -> Target:
     if not ENV_RE.fullmatch(environment):
         fail("invalid environment; use lowercase letters, digits, and underscores only")
     root = project_root()
-    configured = config_targets(root)
-    if configured is not None:
-        if environment not in configured:
-            fail("unknown target in .ssh-skill.json")
-        selection = configured[environment]
-    else:
-        # Legacy .env keeps existing Laravel-only projects working.
-        values = project_env(root)
-        folder_key = f"SSH_{environment.upper()}_FOLDER"
-        if not values.get("SSH_HOST") or not values.get(folder_key):
-            missing = [key for key in ("SSH_HOST", folder_key) if not values.get(key)]
-            fail("missing required .env keys: " + ", ".join(missing))
-        selection = {"host": values["SSH_HOST"], "folder": values[folder_key], "profile": "laravel"}
-        if not SAFE_FOLDER_RE.fullmatch(selection["folder"]):
-            fail("unsafe target folder")
+    values = project_env(root, repair_env_permissions)
+    folder_key = f"SSH_{environment.upper()}_FOLDER"
+    if not values.get("SSH_HOST") or not values.get(folder_key):
+        missing = [key for key in ("SSH_HOST", folder_key) if not values.get(key)]
+        fail("missing required .env keys: " + ", ".join(missing))
+    selection = {"host": values["SSH_HOST"], "folder": values[folder_key], "profile": "laravel"}
+    if not SAFE_FOLDER_RE.fullmatch(selection["folder"]):
+        fail("unsafe target folder")
     effective = ssh_effective(selection["host"])
     return Target(selection["host"], effective["hostname"], effective["user"], effective["port"], effective["hostkeyalias"], selection["folder"], effective.get("userknownhostsfile", ""), selection["profile"])
 
@@ -360,8 +338,10 @@ def parse_args() -> argparse.Namespace:
     subs = parser.add_subparsers(dest="mode", required=True)
     capabilities = subs.add_parser("capabilities")
     capabilities.add_argument("profile", choices=sorted(PROFILE_REGISTRY))
-    for name in ("validate", "host-key"):
-        subs.add_parser(name).add_argument("environment")
+    validate = subs.add_parser("validate")
+    validate.add_argument("environment")
+    validate.add_argument("--confirmed-repair-env-permissions", action="store_true")
+    subs.add_parser("host-key").add_argument("environment")
     for name in ("run", "inspect-env", "inspect-config", "trust-host-key"):
         command = subs.add_parser(name)
         command.add_argument("environment")
@@ -446,7 +426,7 @@ def main() -> int:
     if args.mode == "capabilities":
         print(json.dumps(capability_descriptor(args.profile), sort_keys=True))
         return 0
-    selected = target(args.environment)
+    selected = target(args.environment, repair_env_permissions=(args.mode == "validate" and args.confirmed_repair_env_permissions))
     if args.mode == "validate":
         print(f"environment={args.environment} profile={selected.profile} endpoint={selected.user}@{selected.hostname}:{selected.port} hostkeyalias={selected.hostkeyalias} folder={selected.folder} fingerprint={fingerprint(selected)}")
         return run_ssh(selected, ["pwd"], CONNECT_TIMEOUT)

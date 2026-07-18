@@ -1,5 +1,4 @@
 import importlib.util
-import json
 import os
 import subprocess
 import sys
@@ -18,49 +17,80 @@ sys.modules[SPEC.name] = ssh_helper
 SPEC.loader.exec_module(ssh_helper)
 
 
-class ConfigSafetyTests(unittest.TestCase):
+class EnvSafetyTests(unittest.TestCase):
     def git_untracked(self, *args, **kwargs):
         return subprocess.CompletedProcess(args[0], 1, "", "")
 
-    def test_config_accepts_target_specific_host_and_profile(self):
+    def test_env_parses_literal_target_values(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(ssh_helper.subprocess, "run", self.git_untracked):
-            path = Path(directory, ".ssh-skill.json")
-            path.write_text(json.dumps({"targets": {"prod": {"host": "prod-app", "folder": "/srv/app", "profile": "generic"}}}))
+            path = Path(directory, ".env")
+            path.write_text('SSH_HOST="prod-app"\nexport SSH_PROD_FOLDER=/srv/app\nIGNORED=value\n')
             if os.name == "posix":
                 path.chmod(0o600)
-            self.assertEqual(ssh_helper.config_targets(directory)["prod"], {"host": "prod-app", "folder": "/srv/app", "profile": "generic"})
+            self.assertEqual(ssh_helper.project_env(directory), {"SSH_HOST": "prod-app", "SSH_PROD_FOLDER": "/srv/app"})
 
     @unittest.skipUnless(os.name == "posix", "POSIX permission enforcement")
-    def test_config_rejects_group_or_other_permissions(self):
+    def test_env_rejects_group_or_other_permissions(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(ssh_helper.subprocess, "run", self.git_untracked):
-            path = Path(directory, ".ssh-skill.json")
-            path.write_text('{"targets": {}}')
+            path = Path(directory, ".env")
+            path.write_text("SSH_HOST=prod-app\n")
             path.chmod(0o640)
             with self.assertRaises(SystemExit):
-                ssh_helper.config_targets(directory)
+                ssh_helper.project_env(directory)
 
-    def test_config_rejects_tracked_or_symlinked_file(self):
+    @unittest.skipUnless(os.name == "posix", "POSIX permission enforcement")
+    def test_env_repairs_unsafe_permissions_only_when_explicitly_requested(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(ssh_helper.subprocess, "run", self.git_untracked):
+            path = Path(directory, ".env")
+            path.write_text("SSH_HOST=prod-app\n")
+            path.chmod(0o640)
+            self.assertEqual(ssh_helper.project_env(directory, repair_env_permissions=True), {"SSH_HOST": "prod-app"})
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX permission enforcement")
+    def test_env_repair_failure_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(ssh_helper.subprocess, "run", self.git_untracked):
+            path = Path(directory, ".env")
+            path.write_text("SSH_HOST=prod-app\n")
+            path.chmod(0o640)
+            with patch.object(Path, "chmod", side_effect=OSError):
+                with self.assertRaises(SystemExit):
+                    ssh_helper.project_env(directory, repair_env_permissions=True)
+
+    def test_env_rejects_tracked_or_symlinked_file(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory, ".ssh-skill.json")
-            path.write_text('{"targets": {}}')
+            path = Path(directory, ".env")
+            path.write_text("SSH_HOST=prod-app\n")
             if os.name == "posix":
                 path.chmod(0o600)
             with patch.object(ssh_helper.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")):
                 with self.assertRaises(SystemExit):
-                    ssh_helper.config_targets(directory)
+                    ssh_helper.project_env(directory)
             path.unlink()
             os.symlink("missing", path)
             with self.assertRaises(SystemExit):
-                ssh_helper.config_targets(directory)
+                ssh_helper.project_env(directory)
 
-    def test_config_rejects_extra_schema_fields(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(ssh_helper.subprocess, "run", self.git_untracked):
-            path = Path(directory, ".ssh-skill.json")
-            path.write_text('{"targets": {"prod": {"host": "x", "folder": "/x", "profile": "generic", "extra": true}}}')
+    @unittest.skipUnless(os.name == "posix", "POSIX permission enforcement")
+    def test_env_never_repairs_tracked_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory, ".env")
+            path.write_text("SSH_HOST=prod-app\n")
+            path.chmod(0o640)
+            tracked = subprocess.CompletedProcess([], 0, "", "")
+            with patch.object(ssh_helper.subprocess, "run", return_value=tracked), patch.object(Path, "chmod") as chmod:
+                with self.assertRaises(SystemExit):
+                    ssh_helper.project_env(directory, repair_env_permissions=True)
+            chmod.assert_not_called()
+
+    def test_target_uses_env_host_folder_and_laravel_profile(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(ssh_helper, "project_root", return_value=directory), patch.object(ssh_helper.subprocess, "run", self.git_untracked), patch.object(ssh_helper, "ssh_effective", return_value={"hostname": "example.test", "user": "deploy", "port": "22", "hostkeyalias": "example.test"}):
+            path = Path(directory, ".env")
+            path.write_text("SSH_HOST=prod-app\nSSH_PROD_FOLDER=/srv/app\n")
             if os.name == "posix":
                 path.chmod(0o600)
-            with self.assertRaises(SystemExit):
-                ssh_helper.config_targets(directory)
+            selected = ssh_helper.target("prod")
+            self.assertEqual((selected.alias, selected.folder, selected.profile), ("prod-app", "/srv/app", "laravel"))
 
 
 class ProfilePolicyTests(unittest.TestCase):
