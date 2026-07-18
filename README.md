@@ -63,4 +63,11 @@ only — does not merge, approve, or run migrate/seed/install.
 
 ### SSH
 
-#
+Thin SSH wrapper using project `.env` (`SSH_HOST`, `SSH_USERNAME`,
+`SSH_PRIVATE_KEY_PATH`). Run remote commands, browse the filesystem, and
+debug the host. Destructive commands require explicit confirmation before
+run.
+
+```sh
+/ssh
+```
