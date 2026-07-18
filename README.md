@@ -65,9 +65,12 @@ only — does not merge, approve, or run migrate/seed/install.
 
 Thin SSH wrapper using project `.env` (`SSH_HOST`, `SSH_USERNAME`,
 `SSH_PRIVATE_KEY_PATH`). Run remote commands, browse the filesystem, and
-debug the host. Destructive commands require explicit confirmation before
-run.
+debug the host. Optional `SSH_{ENV}_PROJECT_PATH` scopes work to an
+environment (e.g. `environment production` → `SSH_PRODUCTION_PROJECT_PATH`);
+paths are relative to the SSH user's home unless absolute. Destructive
+commands require explicit confirmation before run.
 
 ```sh
 /ssh
+/ssh production
 ```
