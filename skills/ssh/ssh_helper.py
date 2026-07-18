@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import os
+import pwd
 import re
 import select
 import shlex
@@ -28,6 +29,7 @@ VARIABLE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
 USER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 HOSTKEYALIAS_RE = re.compile(r"^(?:[A-Za-z0-9][A-Za-z0-9._:-]*|\[[A-Za-z0-9][A-Za-z0-9._:-]*\]:[1-9][0-9]{0,4})$")
+SHELL_EXPANSION_RE = re.compile(r"[$`\\|&;<>()[\]{}!*?'\"]")
 SAFE_FOLDER_RE = re.compile(r"^/(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]*$")
 SAFE_LOG_RE = re.compile(r"^[A-Za-z0-9._-]+\.log$")
 LARAVEL_CONFIG_KEYS: FrozenSet[str] = frozenset({"app.environment", "app.debug", "cache.default", "queue.default", "database.default", "session.driver"})
@@ -76,6 +78,7 @@ class Target:
     folder: str
     known_hosts_file: str
     profile: str
+    identity_file: str = ""
 
 
 def fail(message: str) -> NoReturn:
@@ -146,11 +149,17 @@ def project_env(root: str, repair_env_permissions: bool = False) -> Dict[str, st
     return values
 
 
-def ssh_effective(alias: str) -> Dict[str, str]:
+def ssh_effective(alias: str, ssh_user: Optional[str] = None) -> Dict[str, str]:
     if not HOST_RE.fullmatch(alias):
         fail("unsafe SSH_HOST alias")
+    if ssh_user is not None and not USER_RE.fullmatch(ssh_user):
+        fail("unsafe SSH username")
     try:
-        result = subprocess.run(["ssh", "-G", alias], text=True, capture_output=True, timeout=CONNECT_TIMEOUT)
+        command = ["ssh", "-G"]
+        if ssh_user is not None:
+            command.extend(["-l", ssh_user])
+        command.append(alias)
+        result = subprocess.run(command, text=True, capture_output=True, timeout=CONNECT_TIMEOUT)
     except (OSError, subprocess.TimeoutExpired):
         fail("cannot resolve effective SSH target")
         raise AssertionError("unreachable")
@@ -161,10 +170,10 @@ def ssh_effective(alias: str) -> Dict[str, str]:
         key, separator, value = line.partition(" ")
         if separator:
             effective[key.lower()] = value.strip()
-    required = ("hostname", "user", "port")
+    required = ("hostname", "port")
     if any(not effective.get(key) for key in required):
         fail("incomplete effective SSH target")
-    if not HOST_RE.fullmatch(effective["hostname"]) or not USER_RE.fullmatch(effective["user"]):
+    if not HOST_RE.fullmatch(effective["hostname"]):
         fail("unsafe effective SSH target")
     try:
         if not 1 <= int(effective["port"]) <= 65535:
@@ -179,7 +188,7 @@ def ssh_effective(alias: str) -> Dict[str, str]:
     return {**effective, "hostkeyalias": hostkeyalias}
 
 
-def target(environment: str, repair_env_permissions: bool = False) -> Target:
+def target(environment: str, repair_env_permissions: bool = False, ssh_user: Optional[str] = None, identity_file: str = "") -> Target:
     if not ENV_RE.fullmatch(environment):
         fail("invalid environment; use lowercase letters, digits, and underscores only")
     root = project_root()
@@ -191,8 +200,30 @@ def target(environment: str, repair_env_permissions: bool = False) -> Target:
     selection = {"host": values["SSH_HOST"], "folder": values[folder_key], "profile": "laravel"}
     if not SAFE_FOLDER_RE.fullmatch(selection["folder"]):
         fail("unsafe target folder")
-    effective = ssh_effective(selection["host"])
-    return Target(selection["host"], effective["hostname"], effective["user"], effective["port"], effective["hostkeyalias"], selection["folder"], effective.get("userknownhostsfile", ""), selection["profile"])
+    effective = ssh_effective(selection["host"], ssh_user)
+    resolved_user = ssh_user if ssh_user is not None else effective.get("user", "")
+    if resolved_user and not USER_RE.fullmatch(resolved_user):
+        fail("unsafe SSH username")
+    known_hosts_file = effective.get("userknownhostsfile", "")
+    known_hosts_paths(known_hosts_file)
+    return Target(selection["host"], effective["hostname"], resolved_user, effective["port"], effective["hostkeyalias"], selection["folder"], known_hosts_file, selection["profile"], identity_file)
+
+
+def known_hosts_paths(value: str) -> Tuple[str, ...]:
+    """Validate every effective UserKnownHostsFile path without following symlinks."""
+    paths = tuple(shlex.split(value))
+    if not paths:
+        fail("missing effective user known-hosts file")
+    for path in paths:
+        candidate = Path(path)
+        if not candidate.is_absolute() or path == "/dev/null" or candidate.is_symlink():
+            fail("unsafe effective user known-hosts file")
+    return paths
+
+
+def host_key_persistence_target(selected: Target) -> Path:
+    """Trust writes only first configured effective known-hosts destination."""
+    return Path(known_hosts_paths(selected.known_hosts_file)[0])
 
 
 def canonical_policy(policy: ProfilePolicy) -> str:
@@ -220,6 +251,7 @@ def fingerprint(target: Target) -> str:
         "policy_digest": policy_digest,
         "port": target.port,
         "profile": target.profile,
+        "identity_file": target.identity_file,
         "user": target.user,
     }
     return hashlib.sha256(json.dumps(selection, ensure_ascii=True, separators=(",", ":"), sort_keys=True).encode("utf-8")).hexdigest()
@@ -237,12 +269,17 @@ def remote(folder: str, argv: List[str]) -> str:
 
 
 def ssh_argv(target: Target, command: str) -> List[str]:
-    return ["ssh", "-T", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "-o", "UpdateHostKeys=no", "-o", "ClearAllForwardings=yes", "-o", "ForwardAgent=no", "-o", "ForwardX11=no", "-o", "ForwardX11Trusted=no", "-o", "PermitLocalCommand=no", "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "ControlPersist=no", "-o", f"ConnectTimeout={CONNECT_TIMEOUT}", "-o", f"HostKeyAlias={target.hostkeyalias}", "-l", target.user, "-p", target.port, target.alias, command]
+    if not target.identity_file:
+        fail("private-key path required")
+    known_hosts = shlex.join(known_hosts_paths(target.known_hosts_file))
+    return ["ssh", "-F", "/dev/null", "-T", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "-o", "UpdateHostKeys=no", "-o", "IdentitiesOnly=yes", "-o", "IdentityFile=none", "-o", "IdentityAgent=none", "-o", f"UserKnownHostsFile={known_hosts}", "-o", "GlobalKnownHostsFile=/dev/null", "-o", "ClearAllForwardings=yes", "-o", "ForwardAgent=no", "-o", "ForwardX11=no", "-o", "ForwardX11Trusted=no", "-o", "PermitLocalCommand=no", "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "ControlPersist=no", "-o", f"ConnectTimeout={CONNECT_TIMEOUT}", "-o", f"HostKeyAlias={target.hostkeyalias}", "-i", target.identity_file, "-l", target.user, "-p", target.port, target.hostname, command]
 
 
-def clean_output(output: bytes) -> str:
+def clean_output(output: bytes, private_paths: Tuple[str, ...] = ()) -> str:
     text = output.decode("utf-8", errors="replace")
     text = "".join(char for char in text if char in "\n\t" or (char.isprintable() and char != "\x7f"))
+    for private_path in private_paths:
+        text = text.replace(private_path, "[REDACTED]")
     text = ASSIGNMENT_RE.sub(r"\1=[REDACTED]", text)
     text = BEARER_RE.sub(r"\1[REDACTED]", text)
     return CONFIG_SECRET_RE.sub(r"\1 [REDACTED]", text)
@@ -307,7 +344,7 @@ def run_ssh(target: Target, argv: List[str], timeout: int) -> int:
         terminate_process(process)
     else:
         timed_out = wait_to_deadline(process, deadline) or timed_out
-    text = clean_output(bytes(output))
+    text = clean_output(bytes(output), (target.identity_file,))
     if text:
         print(text, end="" if text.endswith("\n") else "\n")
     if capped:
@@ -341,11 +378,18 @@ def parse_args() -> argparse.Namespace:
     validate = subs.add_parser("validate")
     validate.add_argument("environment")
     validate.add_argument("--confirmed-repair-env-permissions", action="store_true")
-    subs.add_parser("host-key").add_argument("environment")
+    validate.add_argument("--ssh-user")
+    validate.add_argument("--identity-file")
+    host_key = subs.add_parser("host-key")
+    host_key.add_argument("environment")
+    host_key.add_argument("--ssh-user", required=True)
+    host_key.add_argument("--identity-file", required=True)
     for name in ("run", "inspect-env", "inspect-config", "trust-host-key"):
         command = subs.add_parser(name)
         command.add_argument("environment")
         command.add_argument("--expected-fingerprint")
+        command.add_argument("--ssh-user", required=True)
+        command.add_argument("--identity-file", required=True)
         if name == "run":
             command.add_argument("--confirmed", action="store_true")
             command.add_argument("--confirmed-timeout", action="store_true")
@@ -359,6 +403,49 @@ def parse_args() -> argparse.Namespace:
             command.add_argument("--confirmed", action="store_true")
             command.add_argument("--fingerprint", required=True)
     return parser.parse_args()
+
+
+def validate_credentials(username: Optional[str], identity_file: Optional[str], required: bool = True) -> Optional[str]:
+    if not username and not identity_file and not required:
+        return None
+    if not username or not identity_file or not USER_RE.fullmatch(username):
+        fail("valid SSH username and private-key path required")
+    home: Optional[Path] = None
+    if SHELL_EXPANSION_RE.search(identity_file):
+        fail("private-key path contains shell-expansion characters")
+    if identity_file.startswith("~/"):
+        suffix = identity_file[2:]
+        if suffix.startswith("/") or any(component in (".", "..") for component in suffix.split("/")):
+            fail("unsafe private-key ~/ path")
+        try:
+            account_home = Path(pwd.getpwuid(os.getuid()).pw_dir)
+            if not account_home.is_absolute():
+                fail("unsafe current-user home directory")
+            home = account_home.resolve(strict=True)
+        except (KeyError, OSError):
+            fail("cannot resolve current-user home directory")
+        if not home.is_absolute() or not home.is_dir():
+            fail("unsafe current-user home directory")
+        key = home / suffix
+    elif identity_file.startswith("~"):
+        fail("private-key path allows only literal ~/ expansion")
+    else:
+        key = Path(identity_file)
+    if not key.is_absolute() or key.is_symlink() or not key.is_file():
+        fail("private-key path must be an absolute regular non-symlink file")
+    try:
+        mode = key.stat().st_mode
+        if mode & 0o077 or not os.access(key, os.R_OK):
+            fail("private-key file must be owner-only and readable")
+    except OSError:
+        fail("cannot validate private-key file")
+    try:
+        canonical = key.resolve(strict=True)
+        if identity_file.startswith("~/") and home is not None:
+            canonical.relative_to(home)
+        return str(canonical)
+    except (OSError, ValueError):
+        fail("cannot canonicalize private-key file")
 
 
 def capability_descriptor(profile: str) -> Dict[str, object]:
@@ -402,10 +489,7 @@ def persist_verified_host_key(selected: Target, expected: str) -> int:
                 verified.append(f"{selected.hostkeyalias} {parts[1]} {parts[2]}\n")
     if len(verified) != 1:
         fail("candidate scan did not contain exactly one verified key")
-    paths = shlex.split(selected.known_hosts_file)
-    if len(paths) != 1 or not paths[0].startswith("/") or paths[0] == "/dev/null":
-        fail("unsafe effective user known-hosts file")
-    known_hosts = Path(paths[0])
+    known_hosts = host_key_persistence_target(selected)
     if known_hosts.is_symlink():
         fail("refusing symlinked user known-hosts file")
     try:
@@ -426,9 +510,13 @@ def main() -> int:
     if args.mode == "capabilities":
         print(json.dumps(capability_descriptor(args.profile), sort_keys=True))
         return 0
-    selected = target(args.environment, repair_env_permissions=(args.mode == "validate" and args.confirmed_repair_env_permissions))
+    identity_file = validate_credentials(getattr(args, "ssh_user", None), getattr(args, "identity_file", None), required=args.mode != "validate" or bool(getattr(args, "ssh_user", None) or getattr(args, "identity_file", None)))
+    selected = target(args.environment, repair_env_permissions=(args.mode == "validate" and args.confirmed_repair_env_permissions), ssh_user=getattr(args, "ssh_user", None), identity_file=identity_file or "")
     if args.mode == "validate":
-        print(f"environment={args.environment} profile={selected.profile} endpoint={selected.user}@{selected.hostname}:{selected.port} hostkeyalias={selected.hostkeyalias} folder={selected.folder} fingerprint={fingerprint(selected)}")
+        endpoint = f"{selected.user}@{selected.hostname}:{selected.port}" if identity_file else f"{selected.hostname}:{selected.port}"
+        print(f"environment={args.environment} profile={selected.profile} endpoint={endpoint} hostkeyalias={selected.hostkeyalias} folder={selected.folder} fingerprint={fingerprint(selected)}")
+        if identity_file is None:
+            return 0
         return run_ssh(selected, ["pwd"], CONNECT_TIMEOUT)
     if args.mode == "host-key":
         print(f"Host key identity: {selected.hostkeyalias}. Candidate keys are untrusted; nothing is persisted.")
@@ -463,6 +551,7 @@ def main() -> int:
         if args.timeout > DEFAULT_TIMEOUT and not args.confirmed_timeout:
             fail("longer timeout requires explicit duration confirmation")
         print(f"target={args.environment} profile={selected.profile} endpoint={selected.user}@{selected.hostname}:{selected.port} hostkeyalias={selected.hostkeyalias} folder={selected.folder} classification={kind} timeout={args.timeout}s")
+        assert identity_file is not None
         return run_ssh(selected, args.command, args.timeout)
     if args.mode == "inspect-env":
         if not PROFILE_REGISTRY[selected.profile]["inspect_env"]:
@@ -471,9 +560,11 @@ def main() -> int:
             fail("invalid variable name")
         # Deliberately fixed helper script; user input reaches only positional parameters.
         script = 'for name; do if printenv "$name" >/dev/null; then if [ -n "$(printenv "$name")" ]; then state=nonempty; else state=empty; fi; printf "%s present=yes %s preview=[REDACTED]\\n" "$name" "$state"; else printf "%s present=no state=missing preview=[REDACTED]\\n" "$name"; fi; done'
+        assert identity_file is not None
         return run_ssh(selected, ["sh", "-c", script, "inspect-env", *args.variables], DEFAULT_TIMEOUT)
     if args.key not in PROFILE_REGISTRY[selected.profile]["inspect_config_keys"]:
         fail("unknown or sensitive config key")
+    assert identity_file is not None
     return run_ssh(selected, ["php", "artisan", "config:show", args.key], DEFAULT_TIMEOUT)
 
 
