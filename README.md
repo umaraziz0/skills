@@ -42,7 +42,13 @@ npx skills add . --list
 
 ### Generate PR description
 
-#
+Paste-ready PR description from unpushed commits on the current branch
+(`@{u}..HEAD`). Uses `docs/pull_request_description.md` when present;
+otherwise Summary + Test plan. Does not create, edit, push, or open a PR.
+
+```sh
+/generate-pr-description
+```
 
 ### Review PR breaking changes
 
