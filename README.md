@@ -52,7 +52,14 @@ otherwise Summary + Test plan. Does not create, edit, push, or open a PR.
 
 ### Review PR breaking changes
 
-#
+Post-merge ops checklist for a user-provided GitHub PR (URL, `#n`, or
+`owner/repo#n`). Flags migrations, dependency bumps, env/key changes,
+seeders, and queue-worker restarts (e.g. Laravel Jobs). Deploy cheat sheet
+only — does not merge, approve, or run migrate/seed/install.
+
+```sh
+/review-pr-breaking <PR>
+```
 
 ### SSH
 
