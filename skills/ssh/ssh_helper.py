@@ -3,6 +3,7 @@
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import select
@@ -12,7 +13,8 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from types import MappingProxyType
+from typing import Dict, FrozenSet, List, Mapping, NoReturn, Optional, Tuple, TypedDict, cast
 
 DEFAULT_TIMEOUT = 30
 MAX_TIMEOUT = 300
@@ -28,14 +30,36 @@ USER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 HOSTKEYALIAS_RE = re.compile(r"^(?:[A-Za-z0-9][A-Za-z0-9._:-]*|\[[A-Za-z0-9][A-Za-z0-9._:-]*\]:[1-9][0-9]{0,4})$")
 SAFE_FOLDER_RE = re.compile(r"^/(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]*$")
 SAFE_LOG_RE = re.compile(r"^[A-Za-z0-9._-]+\.log$")
-CONFIG_KEYS = {"app.environment", "app.debug", "cache.default", "queue.default", "database.default", "session.driver"}
-CONFIRMED_OPERATIONS = {
-    ("git", "pull", "--ff-only"),
-    ("php", "artisan", "migrate", "--force"),
-    ("php", "artisan", "cache:clear"),
-    ("php", "artisan", "config:clear"),
+LARAVEL_CONFIG_KEYS: FrozenSet[str] = frozenset({"app.environment", "app.debug", "cache.default", "queue.default", "database.default", "session.driver"})
+GENERIC_READ_ONLY: FrozenSet[Tuple[str, ...]] = frozenset({
+    ("pwd",), ("git", "status"), ("git", "status", "--short"),
+    ("git", "status", "--branch"), ("git", "status", "--short", "--branch"),
+})
+LARAVEL_CONFIRMED: FrozenSet[Tuple[str, ...]] = frozenset({
+    ("git", "pull", "--ff-only"), ("php", "artisan", "migrate", "--force"),
+    ("php", "artisan", "cache:clear"), ("php", "artisan", "config:clear"),
     ("php", "artisan", "queue:restart"),
-}
+})
+# Immutable registry is enforcement source and capabilities source. Do not derive policy from config.
+class ProfilePolicy(TypedDict):
+    read_only: FrozenSet[Tuple[str, ...]]
+    confirmed: FrozenSet[Tuple[str, ...]]
+    ls_flags: FrozenSet[str]
+    inspect_env: bool
+    inspect_config_keys: FrozenSet[str]
+    log_tail: Optional["LogTailPolicy"]
+
+
+class LogTailPolicy(TypedDict):
+    max_lines: int
+    path_prefix: str
+    filename_pattern: str
+
+
+PROFILE_REGISTRY: Mapping[str, ProfilePolicy] = MappingProxyType({
+    "generic": cast(ProfilePolicy, MappingProxyType({"read_only": GENERIC_READ_ONLY, "confirmed": frozenset(), "ls_flags": frozenset({"-a", "-l", "-la", "-al", "--all", "--long"}), "inspect_env": False, "inspect_config_keys": frozenset(), "log_tail": None})),
+    "laravel": cast(ProfilePolicy, MappingProxyType({"read_only": GENERIC_READ_ONLY, "confirmed": LARAVEL_CONFIRMED, "ls_flags": frozenset({"-a", "-l", "-la", "-al", "--all", "--long"}), "inspect_env": True, "inspect_config_keys": LARAVEL_CONFIG_KEYS, "log_tail": cast(LogTailPolicy, MappingProxyType({"max_lines": MAX_LINES, "path_prefix": "storage/logs/", "filename_pattern": SAFE_LOG_RE.pattern}))})),
+})
 ASSIGNMENT_RE = re.compile(r"(?i)\b([A-Z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD)[A-Z0-9_]*)=([^\s]+)")
 BEARER_RE = re.compile(r"(?i)(authorization\s*:\s*bearer\s+)[^\s]+")
 CONFIG_SECRET_RE = re.compile(r"(?im)^([^\n]*(?:token|key|secret|password|credential|authorization)[^\n]*?)(?:\s*(?:=>|:)\s*|\s{2,})\S.*$")
@@ -51,31 +75,51 @@ class Target:
     hostkeyalias: str
     folder: str
     known_hosts_file: str
+    profile: str
 
 
-def fail(message: str) -> None:
+def fail(message: str) -> NoReturn:
     print(f"error: {message}", file=sys.stderr)
     raise SystemExit(2)
 
 
-def project_env() -> Dict[str, str]:
+def project_root() -> str:
     root = ""
     try:
         root = subprocess.run(["git", "rev-parse", "--show-toplevel"], text=True, capture_output=True, check=True, timeout=CONNECT_TIMEOUT).stdout.strip()
     except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
         fail("no Git project root from current directory")
-    env_path = Path(root) / ".env"
-    if env_path.is_symlink():
-        fail("refusing symlinked project .env")
-    if not env_path.is_file():
-        fail("missing project environment file")
+    return root
+
+
+def untracked_regular_file(root: str, name: str) -> Optional[Path]:
+    """Return root-local untracked regular file, or None when absent."""
+    path = Path(root) / name
+    if path.is_symlink():
+        fail(f"refusing symlinked project {name}")
+    if not path.exists():
+        return None
+    if not path.is_file():
+        fail(f"project {name} is not a regular file")
+    if name == ".ssh-skill.json" and os.name == "posix":
+        try:
+            if path.stat().st_mode & 0o077:
+                fail("project .ssh-skill.json must be owner-only (chmod 600)")
+        except OSError:
+            fail("cannot verify project .ssh-skill.json permissions")
     try:
-        tracked = subprocess.run(["git", "ls-files", "--error-unmatch", ".env"], cwd=root, text=True, capture_output=True, timeout=CONNECT_TIMEOUT)
+        tracked = subprocess.run(["git", "ls-files", "--error-unmatch", "--", name], cwd=root, text=True, capture_output=True, timeout=CONNECT_TIMEOUT)
     except (OSError, subprocess.TimeoutExpired):
-        fail("cannot verify project .env tracking")
-        raise AssertionError("unreachable")
+        fail(f"cannot verify project {name} tracking")
     if tracked.returncode == 0:
-        fail("refusing Git-tracked project .env")
+        fail(f"refusing Git-tracked project {name}")
+    return path
+
+
+def project_env(root: str) -> Dict[str, str]:
+    env_path = untracked_regular_file(root, ".env")
+    if env_path is None:
+        fail("missing project environment file")
     values: Dict[str, str] = {}
     lines: List[str] = []
     try:
@@ -95,6 +139,26 @@ def project_env() -> Dict[str, str]:
                 value = value[1:-1]
             values[key.strip()] = value
     return values
+
+
+def config_targets(root: str) -> Optional[Dict[str, Dict[str, str]]]:
+    path = untracked_regular_file(root, ".ssh-skill.json")
+    if path is None:
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        fail("invalid .ssh-skill.json")
+    if not isinstance(data, dict) or set(data) != {"targets"} or not isinstance(data["targets"], dict) or not data["targets"]:
+        fail("invalid .ssh-skill.json schema")
+    targets: Dict[str, Dict[str, str]] = {}
+    for environment, entry in data["targets"].items():
+        if not isinstance(environment, str) or not ENV_RE.fullmatch(environment) or not isinstance(entry, dict) or set(entry) != {"host", "folder", "profile"}:
+            fail("invalid .ssh-skill.json target schema")
+        if not all(isinstance(entry[key], str) for key in entry) or not HOST_RE.fullmatch(entry["host"]) or not SAFE_FOLDER_RE.fullmatch(entry["folder"]) or entry["profile"] not in PROFILE_REGISTRY:
+            fail("unsafe .ssh-skill.json target")
+        targets[environment] = {key: entry[key] for key in ("host", "folder", "profile")}
+    return targets
 
 
 def ssh_effective(alias: str) -> Dict[str, str]:
@@ -133,21 +197,54 @@ def ssh_effective(alias: str) -> Dict[str, str]:
 def target(environment: str) -> Target:
     if not ENV_RE.fullmatch(environment):
         fail("invalid environment; use lowercase letters, digits, and underscores only")
-    values = project_env()
-    folder_key = f"SSH_{environment.upper()}_FOLDER"
-    if not values.get("SSH_HOST") or not values.get(folder_key):
-        missing = [key for key in ("SSH_HOST", folder_key) if not values.get(key)]
-        fail("missing required .env keys: " + ", ".join(missing))
-    folder = values[folder_key]
-    if not SAFE_FOLDER_RE.fullmatch(folder):
-        fail("unsafe target folder")
-    effective = ssh_effective(values["SSH_HOST"])
-    return Target(values["SSH_HOST"], effective["hostname"], effective["user"], effective["port"], effective["hostkeyalias"], folder, effective.get("userknownhostsfile", ""))
+    root = project_root()
+    configured = config_targets(root)
+    if configured is not None:
+        if environment not in configured:
+            fail("unknown target in .ssh-skill.json")
+        selection = configured[environment]
+    else:
+        # Legacy .env keeps existing Laravel-only projects working.
+        values = project_env(root)
+        folder_key = f"SSH_{environment.upper()}_FOLDER"
+        if not values.get("SSH_HOST") or not values.get(folder_key):
+            missing = [key for key in ("SSH_HOST", folder_key) if not values.get(key)]
+            fail("missing required .env keys: " + ", ".join(missing))
+        selection = {"host": values["SSH_HOST"], "folder": values[folder_key], "profile": "laravel"}
+        if not SAFE_FOLDER_RE.fullmatch(selection["folder"]):
+            fail("unsafe target folder")
+    effective = ssh_effective(selection["host"])
+    return Target(selection["host"], effective["hostname"], effective["user"], effective["port"], effective["hostkeyalias"], selection["folder"], effective.get("userknownhostsfile", ""), selection["profile"])
+
+
+def canonical_policy(policy: ProfilePolicy) -> str:
+    """Stable serialization of every enforcement field used by a profile."""
+    payload = {
+        "confirmed": sorted(policy["confirmed"]),
+        "inspect_config_keys": sorted(policy["inspect_config_keys"]),
+        "inspect_env": policy["inspect_env"],
+        "log_tail": dict(policy["log_tail"]) if policy["log_tail"] else None,
+        "ls_flags": sorted(policy["ls_flags"]),
+        "read_only": sorted(policy["read_only"]),
+    }
+    return json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
 
 
 def fingerprint(target: Target) -> str:
-    value = "\0".join((target.user, target.hostname, target.port, target.hostkeyalias, target.folder))
-    return hashlib.sha256(value.encode()).hexdigest()
+    policy = PROFILE_REGISTRY[target.profile]
+    policy_digest = hashlib.sha256(canonical_policy(policy).encode("utf-8")).hexdigest()
+    selection = {
+        "alias": target.alias,
+        "folder": target.folder,
+        "hostkeyalias": target.hostkeyalias,
+        "hostname": target.hostname,
+        "known_hosts_file": target.known_hosts_file,
+        "policy_digest": policy_digest,
+        "port": target.port,
+        "profile": target.profile,
+        "user": target.user,
+    }
+    return hashlib.sha256(json.dumps(selection, ensure_ascii=True, separators=(",", ":"), sort_keys=True).encode("utf-8")).hexdigest()
 
 
 def require_selected_target(args: argparse.Namespace, selected: Target) -> None:
@@ -244,16 +341,16 @@ def run_ssh(target: Target, argv: List[str], timeout: int) -> int:
     return process.returncode
 
 
-def operation(argv: List[str]) -> Optional[str]:
-    if argv == ["pwd"]:
+def operation(profile: str, argv: List[str]) -> Optional[str]:
+    policy = PROFILE_REGISTRY[profile]
+    if tuple(argv) in policy["read_only"]:
         return "read-only"
-    if argv and argv[0] == "ls" and all(flag in {"-a", "-l", "-la", "-al", "--all", "--long"} for flag in argv[1:]):
+    if argv and argv[0] == "ls" and all(flag in policy["ls_flags"] for flag in argv[1:]):
         return "read-only"
-    if argv in (["git", "status"], ["git", "status", "--short"], ["git", "status", "--branch"], ["git", "status", "--short", "--branch"]):
+    log_tail = policy["log_tail"]
+    if log_tail and len(argv) == 4 and argv[:2] == ["tail", "-n"] and argv[2].isdigit() and 0 < int(argv[2]) <= int(log_tail["max_lines"]) and argv[3].startswith(str(log_tail["path_prefix"])) and SAFE_LOG_RE.fullmatch(argv[3][len(str(log_tail["path_prefix"])):]):
         return "read-only"
-    if len(argv) == 4 and argv[:2] == ["tail", "-n"] and argv[2].isdigit() and 0 < int(argv[2]) <= MAX_LINES and argv[3].startswith("storage/logs/") and SAFE_LOG_RE.fullmatch(argv[3][13:]):
-        return "read-only"
-    if tuple(argv) in CONFIRMED_OPERATIONS:
+    if tuple(argv) in policy["confirmed"]:
         return "confirmed"
     return None
 
@@ -261,6 +358,8 @@ def operation(argv: List[str]) -> Optional[str]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest="mode", required=True)
+    capabilities = subs.add_parser("capabilities")
+    capabilities.add_argument("profile", choices=sorted(PROFILE_REGISTRY))
     for name in ("validate", "host-key"):
         subs.add_parser(name).add_argument("environment")
     for name in ("run", "inspect-env", "inspect-config", "trust-host-key"):
@@ -280,6 +379,23 @@ def parse_args() -> argparse.Namespace:
             command.add_argument("--confirmed", action="store_true")
             command.add_argument("--fingerprint", required=True)
     return parser.parse_args()
+
+
+def capability_descriptor(profile: str) -> Dict[str, object]:
+    """Public, complete view of immutable operation enforcement for one profile."""
+    policy = PROFILE_REGISTRY[profile]
+    operations = ([{"argv": list(argv), "confirmation": "none"} for argv in sorted(policy["read_only"])] +
+                  [{"argv": list(argv), "confirmation": "required"} for argv in sorted(policy["confirmed"])] +
+                  [{"argv": ["ls"], "allowed_flags": sorted(policy["ls_flags"]), "paths_allowed": False, "confirmation": "none"}])
+    if policy["log_tail"]:
+        log_tail = policy["log_tail"]
+        operations.append({"argv": ["tail", "-n", "<line-count>", "<log-path>"], "confirmation": "none", "line_count": {"minimum": 1, "maximum": log_tail["max_lines"]}, "path_prefix": log_tail["path_prefix"], "filename_pattern": log_tail["filename_pattern"]})
+    return {
+        "profile": profile,
+        "operations": operations,
+        "inspect_env": {"argv": ["inspect-env", "<variable>", "..."], "allowed": policy["inspect_env"], "confirmation": "none", "variable_pattern": VARIABLE_RE.pattern if policy["inspect_env"] else None},
+        "inspect_config": {"argv": ["inspect-config", "<safe-key>"], "allowed": bool(policy["inspect_config_keys"]), "confirmation": "none", "safe_keys": sorted(policy["inspect_config_keys"])},
+    }
 
 
 def persist_verified_host_key(selected: Target, expected: str) -> int:
@@ -327,9 +443,12 @@ def persist_verified_host_key(selected: Target, expected: str) -> int:
 
 def main() -> int:
     args = parse_args()
+    if args.mode == "capabilities":
+        print(json.dumps(capability_descriptor(args.profile), sort_keys=True))
+        return 0
     selected = target(args.environment)
     if args.mode == "validate":
-        print(f"environment={args.environment} endpoint={selected.user}@{selected.hostname}:{selected.port} hostkeyalias={selected.hostkeyalias} folder={selected.folder} fingerprint={fingerprint(selected)}")
+        print(f"environment={args.environment} profile={selected.profile} endpoint={selected.user}@{selected.hostname}:{selected.port} hostkeyalias={selected.hostkeyalias} folder={selected.folder} fingerprint={fingerprint(selected)}")
         return run_ssh(selected, ["pwd"], CONNECT_TIMEOUT)
     if args.mode == "host-key":
         print(f"Host key identity: {selected.hostkeyalias}. Candidate keys are untrusted; nothing is persisted.")
@@ -354,7 +473,7 @@ def main() -> int:
             fail("persisting host key requires exact user confirmation")
         return persist_verified_host_key(selected, args.fingerprint)
     if args.mode == "run":
-        kind = operation(args.command)
+        kind = operation(selected.profile, args.command)
         if kind is None:
             fail("operation not allowlisted")
         if not 0 < args.timeout <= MAX_TIMEOUT:
@@ -363,15 +482,17 @@ def main() -> int:
             fail("named operation requires exact user confirmation")
         if args.timeout > DEFAULT_TIMEOUT and not args.confirmed_timeout:
             fail("longer timeout requires explicit duration confirmation")
-        print(f"target={args.environment} endpoint={selected.user}@{selected.hostname}:{selected.port} hostkeyalias={selected.hostkeyalias} folder={selected.folder} classification={kind} timeout={args.timeout}s")
+        print(f"target={args.environment} profile={selected.profile} endpoint={selected.user}@{selected.hostname}:{selected.port} hostkeyalias={selected.hostkeyalias} folder={selected.folder} classification={kind} timeout={args.timeout}s")
         return run_ssh(selected, args.command, args.timeout)
     if args.mode == "inspect-env":
+        if not PROFILE_REGISTRY[selected.profile]["inspect_env"]:
+            fail("profile does not allow environment inspection")
         if any(not VARIABLE_RE.fullmatch(variable) for variable in args.variables):
             fail("invalid variable name")
         # Deliberately fixed helper script; user input reaches only positional parameters.
         script = 'for name; do if printenv "$name" >/dev/null; then if [ -n "$(printenv "$name")" ]; then state=nonempty; else state=empty; fi; printf "%s present=yes %s preview=[REDACTED]\\n" "$name" "$state"; else printf "%s present=no state=missing preview=[REDACTED]\\n" "$name"; fi; done'
         return run_ssh(selected, ["sh", "-c", script, "inspect-env", *args.variables], DEFAULT_TIMEOUT)
-    if args.key not in CONFIG_KEYS:
+    if args.key not in PROFILE_REGISTRY[selected.profile]["inspect_config_keys"]:
         fail("unknown or sensitive config key")
     return run_ssh(selected, ["php", "artisan", "config:show", args.key], DEFAULT_TIMEOUT)
 
