@@ -63,13 +63,13 @@ only — does not merge, approve, or run migrate/seed/install.
 
 ### SSH
 
-Thin SSH wrapper using project `.env` (`SSH_HOST`, `SSH_USERNAME`,
-`SSH_PRIVATE_KEY_PATH`). Run remote commands, browse the filesystem, and
-debug the host. After a successful connect, optional
-`SSH_{ENV}_PROJECT_PATH` scopes work via `environment production` (etc.);
-paths are relative to the SSH user's home unless absolute. Do not pass the
-env on `/ssh` itself (e.g. not `/ssh preview`). Destructive commands require
-explicit confirmation before run.
+Thin SSH wrapper. Ask once per session, then load **only `SSH_*` lines** from
+project `.env` (`SSH_HOST`, `SSH_USERNAME`, `SSH_PRIVATE_KEY_PATH`) — never
+source the whole file. Run remote commands, browse the filesystem, and debug
+the host. After a successful connect, optional `SSH_{ENV}_PROJECT_PATH` scopes
+work via `environment production` (etc.); paths are relative to the SSH user's
+home unless absolute. Do not pass the env on `/ssh` itself (e.g. not
+`/ssh preview`). Destructive commands require explicit confirmation before run.
 
 ```sh
 /ssh
