@@ -42,31 +42,12 @@ npx skills add . --list
 
 ### Generate PR description
 
-`generate-pr-description` creates evidence-based, paste-ready PR descriptions from committed changes on current branch. It resolves base branch and optional template, then reports summary, changes, and test plan. It never creates, edits, pushes, or opens a PR.
-
-**Setup:** Run from target Git repository. Requires Python 3 and Git. No additional configuration; optional repository PR template is detected during use.
+#
 
 ### Review PR breaking changes
 
-`review-pr-breaking` reviews GitHub or GitHub Enterprise pull requests for migrations, dependency changes, environment changes, and manual deployment steps before merge or deploy.
-
-**Setup:** Run from target repository checkout. Requires Bash, Python 3, GitHub CLI (`gh`), and access to PR. Optional extension-only path configuration is available in [`skills/review-pr-breaking/references/configuration.md`](skills/review-pr-breaking/references/configuration.md); built-in detectors remain enabled.
+#
 
 ### SSH
 
-`ssh` safely selects configured SSH deployment target and runs only profile-approved operations. It binds target selection to endpoint, folder, and host-key identity; it does not open interactive shell or execute arbitrary remote commands.
-
-**Setup:** Run from local Git project with Python 3, Git, OpenSSH client, SSH key/configuration, and remote POSIX shell. Add untracked, ignored, owner-only `.env` at project root:
-
-```dotenv
-SSH_HOST=production-app
-SSH_PRODUCTION_FOLDER=/var/www/app
-```
-
-Set restrictive permissions and ensure Git ignores config:
-
-```sh
-chmod 600 .env
-```
-
-See [`skills/ssh/references/setup.md`](skills/ssh/references/setup.md) for full `.env` setup, SSH client configuration, and host-key verification.
+#
