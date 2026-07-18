@@ -1,0 +1,13 @@
+{
+  "$schema": "https://skills.sh/schema.json",
+  "groups": [
+    {
+      "name": "Engineering",
+      "skills": [
+        "generate-pr-description",
+        "review-pr-breaking",
+        "ssh"
+      ]
+    }
+  ]
+}

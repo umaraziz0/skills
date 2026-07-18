@@ -1,6 +1,6 @@
 ---
 name: review-pr-breaking
-description: Use when reviewing a GitHub pull request before merge or deploy to surface breaking changes: migrations, dependencies, required env vars, or manual commands.
+description: "Use when reviewing a GitHub pull request before merge or deploy to surface breaking changes: migrations, dependencies, required env vars, or manual commands."
 ---
 
 # Reviewing PR Breaking Changes
