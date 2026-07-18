@@ -2,9 +2,10 @@
 name: review-pr-breaking
 description: >
   Identify GitHub PR "breaking" / post-merge ops changes: database migrations,
-  dependency updates, environment file or required env-var changes, and seeders
-  that must be run. Use when user asks to review a PR for breaking changes,
-  deploy checklist, staging/prod merge readiness, or invokes /review-pr-breaking.
+  dependency updates, environment file or required env-var changes, seeders
+  that must be run, and queue-worker restarts (e.g. Laravel Jobs). Use when
+  user asks to review a PR for breaking changes, deploy checklist, staging/prod
+  merge readiness, or invokes /review-pr-breaking.
 disable-model-invocation: true
 ---
 
@@ -125,11 +126,32 @@ one-shot; whether it must run manually after migrate.
 **Post-merge action:** run named seed command only when evidence shows it is
 required (new required data, not test-only fixtures).
 
+### Queue workers / long-lived processes
+
+Long-running workers load code once. Editing job/handler code (or queue
+config) usually needs a **worker restart** after deploy — otherwise old code
+keeps running.
+
+| Signal | Examples |
+|--------|----------|
+| Laravel jobs / queued work | `**/Jobs/**`, `**/app/Jobs/**`, queued `**/Listeners/**`, queued `**/Mail/**` / notifications, `**/app/Console/Commands/**` used as queue workers |
+| Laravel queue config | `config/queue.php`, `config/horizon.php`, Horizon supervisors, `bootstrap` queue bindings |
+| Other stacks | Sidekiq workers (`**/workers/**`, `sidekiq.yml`), Celery tasks (`**/tasks.py`, celery beat/worker config), Bull/BullMQ processors, GoodJob/Solid Queue process config |
+| Worker process defs | `Procfile`, `supervisord*.conf`, systemd unit snippets, Docker compose `queue`/`worker` services when command or image code path changes |
+
+**Report:** each changed job/worker path (or config key) and why restart
+matters. If only a sync-path change with no queued class touched, skip.
+
+**Post-merge action:** restart queue workers on target env after code deploy
+(e.g. Laravel: `php artisan queue:restart`, Horizon: `php artisan horizon:terminate`,
+or restart the worker container/process). Prefer the project's usual restart
+command when known from deploy docs/scripts.
+
 ### Other ops (include only if clear)
 
 Optional short section when diff clearly needs ops attention:
 
-- Queue / scheduler / cron registration
+- Scheduler / cron registration (e.g. `routes/console.php`, Kernel schedule)
 - Storage buckets, search indexes, webhook endpoints
 - Infra: Dockerfile, CI deploy config, Terraform/Pulumi
 
@@ -159,6 +181,9 @@ analysis.
 ## Seeders
 - [ ] `<path>` — <why> — **run:** <seed command>
 
+## Queue workers
+- [ ] `<path>` — <why restart needed> — **restart:** <queue:restart / horizon:terminate / worker process>
+
 ## Other ops
 - [ ] <item> — **action:** <...>
 
@@ -167,7 +192,9 @@ analysis.
 2. Install deps (if needed before migrate)
 3. Run migrations
 4. Run seeders (if required)
-5. Deploy / smoke-check
+5. Deploy app code
+6. Restart queue workers (if required)
+7. Smoke-check
 ```
 
 Rules for the report:
