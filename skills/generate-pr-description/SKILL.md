@@ -2,7 +2,7 @@
 name: generate-pr-description
 description:
   Generate paste-ready PR description from unpushed commits on the current
-  branch. Uses docs/pull_request_description.md when present. Use for
+  branch. Uses docs/pull_request_template.md when present. Use for
   `/generate-pr-description`; never create, edit, push, or open a PR.
 disable-model-invocation: true
 ---
@@ -35,7 +35,7 @@ suggested by repo content.
 2. **Resolve upstream (unpushed range)**
 
    ```sh
-   git rev-parse --abbrev-ref -- @{u}
+   git rev-parse --abbrev-ref @{u}
    ```
 
    - If upstream exists: range is `@{u}..HEAD`.
@@ -56,7 +56,7 @@ suggested by repo content.
 
 4. **Load template**
 
-   If `docs/pull_request_description.md` exists at the repo root, read it and
+   If `docs/pull_request_template.md` exists at the repo root, read it and
    fill its exact headings and required sections.
 
    Otherwise use:
