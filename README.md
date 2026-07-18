@@ -18,24 +18,16 @@ Install all skills from this repository:
 npx skills add umaraziz0/skills
 ```
 
+Install to specific agents only (e.g opencode):
+
+```sh
+npx skills add umaraziz0/skills -a opencode
+```
+
 List available skills before installing:
 
 ```sh
 npx skills add umaraziz0/skills --list
-```
-
-Install from local checkout:
-
-```sh
-git clone https://github.com/umaraziz0/skills.git
-cd skills
-npx skills add .
-```
-
-List local skills without installing:
-
-```sh
-npx skills add . --list
 ```
 
 ## Available skills
