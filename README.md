@@ -15,20 +15,20 @@ Various project-agnostic engineering agent skills.
 Install all skills from this repository:
 
 ```sh
-npx skills add <owner>/<repo>
+npx skills add umaraziz0/skills
 ```
 
 List available skills before installing:
 
 ```sh
-npx skills add <owner>/<repo> --list
+npx skills add umaraziz0/skills --list
 ```
 
 Install from local checkout:
 
 ```sh
-git clone https://github.com/<owner>/<repo>.git
-cd <repo>
+git clone https://github.com/umaraziz0/skills.git
+cd skills
 npx skills add .
 ```
 
