@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.0](https://github.com/umaraziz0/skills/compare/v1.0.0...v1.1.0) (2026-07-25)
+
+
+### Features
+
+* add `tight-review` skill ([107f487](https://github.com/umaraziz0/skills/commit/107f487da666691bbe41cc5e6e79c37db3b98778))
+* **tight-review:** add modes ([cc69574](https://github.com/umaraziz0/skills/commit/cc69574c3afdae8d09e276e7388a7687ed657dcf))
+* **tight-review:** add subtypes ([04096ad](https://github.com/umaraziz0/skills/commit/04096adb63193735eb635cce78cdcf0dde75e237))
+
 ## 1.0.0 (2026-07-18)
 
 
