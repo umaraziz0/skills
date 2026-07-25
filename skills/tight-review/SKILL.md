@@ -18,14 +18,23 @@ repository.
 
 - `/tight-review <fixed-point>` selects Diff mode by default.
 - `/tight-review diff <fixed-point>` selects Diff mode explicitly.
+- `/tight-review diff worktree` selects the current-worktree Diff subtype.
+- `/tight-review diff range <base> <head>` selects the exact-range Diff subtype.
 - `/tight-review flow <file> [file ...]` selects Flow mode.
 
-Parse the first token literally. Never infer Flow from prose, filenames, or
-intent. Diff takes exactly one fixed point; Flow takes one or more paths. If
-mode or required input is missing or ambiguous, ask for the exact missing input
-and do not guess.
+Parse the first token literally; no natural-language aliases. Never infer Flow
+from prose, filenames, or intent. After `diff`, reserve literal `worktree` and
+`range`; do not treat them as refs. Default Diff and `diff` take exactly one
+fixed point, `diff worktree` takes no extra input, `diff range` takes exactly two
+refs, and Flow takes one or more paths. If mode, subtype, or required input is
+missing or ambiguous, ask for the exact missing input and do not guess.
 
 ## Diff mode
+
+Run exactly one Diff subtype below. Shared evidence, lanes, and output rules
+follow.
+
+### Merge-base subtype (default)
 
 Require a fixed point (commit, tag, or branch); do not infer it from branch
 name, upstream, or default branch. Resolve the ref once to `FIXED_POINT` and
@@ -51,6 +60,55 @@ git status --short
 
 Read changed hunks and surrounding context as needed. Findings target changed
 lines. Uncommitted work is outside Diff mode review. Read-only commands only.
+
+### Worktree subtype
+
+Compare current working-tree content to `HEAD`. For tracked files use
+`git diff HEAD --`, which combines staged and unstaged net changes without
+double-counting. Capture status and names read-only:
+
+```sh
+git status --short --untracked-files=all
+git diff --name-status HEAD --
+git diff HEAD --
+git ls-files --others --exclude-standard -z
+```
+
+Include every path from `git ls-files --others --exclude-standard` that is a
+regular, non-ignored file; treat each full untracked file as added content.
+Require at least one staged, unstaged, or untracked change; otherwise stop:
+empty scope. Reject or record unreadable, escaping-symlink, binary, and
+unsupported paths as explicit blind spots, never silently as covered. Before
+findings, list each such path and reason as `Blind spots: ...`; omit that line
+when none exist. Findings target added or modified current-worktree lines.
+For deleted-line-only issues, point to a precise diff location and state what
+deletion breaks. Never stage or mutate.
+
+### Exact-range subtype
+
+Resolve `<base>` and `<head>` once to commit SHAs; `HEAD` is valid and means the
+latest commit:
+
+```sh
+BASE_COMMIT="$(git rev-parse --verify '<base>^{commit}')"
+HEAD_COMMIT="$(git rev-parse --verify '<head>^{commit}')"
+git merge-base --is-ancestor "$BASE_COMMIT" "$HEAD_COMMIT"
+git diff --quiet "$BASE_COMMIT..$HEAD_COMMIT" --
+```
+
+If either ref is invalid or base is not an ancestor of head, ask for corrected
+refs. Review aggregate net endpoint diff `BASE_COMMIT..HEAD_COMMIT`, not each
+commit independently. Base tree is excluded; pass `<base>^` when the base
+commit itself must be included. A zero exit from `git diff --quiet` means stop:
+empty range. Capture commits and changed files:
+
+```sh
+git log --reverse --format='%H%n%s%n%b%n' "$BASE_COMMIT..$HEAD_COMMIT"
+git diff --name-status "$BASE_COMMIT..$HEAD_COMMIT" --
+```
+
+Uncommitted changes are excluded. Findings target changed lines in the endpoint
+diff. Read-only commands only.
 
 ## Flow mode
 

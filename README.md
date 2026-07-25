@@ -68,8 +68,15 @@ changes. A lean combination of:
 ```sh
 /tight-review <fixed-point>
 /tight-review diff <fixed-point>
+/tight-review diff worktree
+/tight-review diff range main feature
 /tight-review flow src/auth.ts src/routes.ts
 ```
+
+- Merge-base Diff: review `fixed-point...HEAD`.
+- Worktree Diff: review tracked net changes from `HEAD` plus untracked files.
+- Exact-range Diff: review aggregate `base..head`; pass `base^` to include base.
+- Flow: trace current working-tree behavior from listed file roots.
 
 ### SSH
 
