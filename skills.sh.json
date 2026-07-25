@@ -6,6 +6,7 @@
       "skills": [
         "generate-pr-description",
         "review-pr-breaking",
+        "tight-review",
         "ssh"
       ]
     }
