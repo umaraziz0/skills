@@ -1,8 +1,5 @@
 # Flow mode
 
-Read this file completely after the router selects Flow, then execute Flow
-only. Do not read or execute Diff instructions.
-
 ## Roots and snapshot
 
 Require one or more existing regular files. Resolve relative paths against the

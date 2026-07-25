@@ -1,8 +1,5 @@
 # Diff mode
 
-Read this file completely after the router selects Diff, then execute only the
-selected subtype. Do not read or execute Flow instructions.
-
 ## Merge-base subtype (default)
 
 Require a fixed point (commit, tag, or branch); do not infer it from branch
