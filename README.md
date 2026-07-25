@@ -56,10 +56,10 @@ only — does not merge, approve, or run migrate/seed/install.
 
 ### Tight review
 
-Read-only review of committed changes against a pinned ref. Checks spec/ticket
-compliance, documented repository standards, and unnecessary complexity in
-separate lanes; does not mutate, approve, or request changes. A lean combination
-of:
+Read-only review with Diff mode by default and explicit Flow mode. Checks
+correctness, spec/ticket compliance, documented repository standards, and
+unnecessary complexity in separate lanes; does not mutate, approve, or request
+changes. A lean combination of:
 
 - [/ponytail-review](https://github.com/DietrichGebert/ponytail/tree/main/skills/ponytail-review) - for tight coding principles
 - [/code-review](https://github.com/mattpocock/skills/tree/main/skills/engineering/code-review) - for spec and style adherence
@@ -67,6 +67,8 @@ of:
 
 ```sh
 /tight-review <fixed-point>
+/tight-review diff <fixed-point>
+/tight-review flow src/auth.ts src/routes.ts
 ```
 
 ### SSH
