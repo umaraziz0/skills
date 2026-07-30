@@ -38,7 +38,7 @@ if [[ "$SSH_PRIVATE_KEY_PATH" == "~/"* ]]; then
   SSH_PRIVATE_KEY_PATH="$HOME/${SSH_PRIVATE_KEY_PATH#"~/"}"
 fi
 
-# Relative path → this local repo root (never SSH_{ENV}_PROJECT_PATH)
+# Relative path → this local repo root
 case "$SSH_PRIVATE_KEY_PATH" in
   /*) ;;
   *)  SSH_PRIVATE_KEY_PATH="$(pwd)/$SSH_PRIVATE_KEY_PATH" ;;
