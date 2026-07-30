@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/umaraziz0/skills/compare/v1.1.0...v1.1.1) (2026-07-30)
+
+
+### Bug Fixes
+
+* **ssh:** remove environment feature ([1d36f55](https://github.com/umaraziz0/skills/commit/1d36f551d28fa99056857cb630e19172d611a773))
+
 ## [1.1.0](https://github.com/umaraziz0/skills/compare/v1.0.0...v1.1.0) (2026-07-25)
 
 
