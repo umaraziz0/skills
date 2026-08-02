@@ -16,20 +16,31 @@ repository.
 
 ## Mode router
 
-Syntax:
+Normalize request once into exactly one canonical branch. Apply rules in this
+order; do not decide by literal arity first:
 
-- `/tight-review <fixed-point>` — default merge-base Diff.
-- `/tight-review diff <fixed-point>` — explicit merge-base Diff.
-- `/tight-review diff worktree` — current-worktree Diff.
-- `/tight-review diff range <base> <head>` — exact-endpoint Diff.
-- `/tight-review flow <file> [file ...]` — Flow.
+1. Obvious current-working-tree intent, such as `uncommitted changes` or an
+   equivalent phrase, becomes `diff worktree`.
+2. `files <path-list>` becomes Flow with explicit roots. Split the remainder
+   on commas and whitespace, discard empty separators, and require one or more
+   paths. The same path-list normalization applies to canonical `flow`.
+3. A request naming an entire feature, domain, or flow, such as `the entire x
+   flow`, becomes Flow with descriptive scope `x`. Do not turn descriptive
+   terms into paths or silently review every match; [FLOW.md](FLOW.md) defines
+   repository-local discovery and bounds.
+4. Preserve these canonical forms:
+   - `/tight-review <fixed-point>` — default merge-base Diff.
+   - `/tight-review diff <fixed-point>` — explicit merge-base Diff.
+   - `/tight-review diff worktree` — current-worktree Diff.
+   - `/tight-review diff range <base> <head>` — exact-endpoint Diff.
+   - `/tight-review flow <file>...` — Flow with explicit roots.
 
-Parse tokens literally; no natural-language aliases. After `diff`, reserve
-literal `worktree` and `range`; do not treat them as refs. Default Diff and
-`diff` take exactly one fixed point, `diff worktree` takes no extra input,
-`diff range` takes exactly two refs, and Flow takes one or more paths. Never
-infer Flow from prose, filenames, or intent. Missing, wrong, or ambiguous
-arity: ask for the exact missing input and do not guess.
+After `diff`, reserve literal `worktree` and `range`; do not treat them as
+refs. Normalize only to `diff-fixed-point(ref)`, `diff-worktree`,
+`diff-range(base, head)`, `flow-roots(paths)`, or `flow-description(concept)`.
+Missing scope, invalid refs/paths, or genuinely ambiguous intent: ask one
+focused clarification naming the missing input or candidate scopes. Never
+silently widen scope.
 
 After parsing, follow exactly one branch:
 
