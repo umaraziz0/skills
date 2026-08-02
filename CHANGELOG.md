@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/umaraziz0/skills/compare/v1.1.1...v1.1.2) (2026-08-02)
+
+
+### Bug Fixes
+
+* **tight-review:** modify to be more lax ([2517c9c](https://github.com/umaraziz0/skills/commit/2517c9c61f62e32086090d4d64b66f93a0d07937))
+
 ## [1.1.1](https://github.com/umaraziz0/skills/compare/v1.1.0...v1.1.1) (2026-07-30)
 
 
