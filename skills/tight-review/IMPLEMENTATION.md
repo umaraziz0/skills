@@ -48,9 +48,7 @@ roots. Deleted paths remain discovery evidence but cannot become roots. Renamed
 paths contribute their old and new paths for discovery, but only an existing
 current path can become a root. Apply repository-root, regular-file, and
 escaping-symlink checks from Explicit roots. Exclude generated, vendor,
-dependency, and other non-first-party paths using repository evidence. The
-commit is not a comparison base and does not select a historical snapshot; read
-every root and traced file from the current working-tree snapshot.
+dependency, and other non-first-party paths using repository evidence.
 
 If changed files span multiple unrelated implementations, or no bounded
 implementation trace can be inferred, ask one focused clarification naming the
@@ -61,9 +59,9 @@ are selected, trace only the bounded implementation reachable from them.
 ## Roots and snapshot
 
 Read the current working-tree snapshot, including unchanged and uncommitted
-content, without mutation. Listed files are roots, not hard boundaries. A
-commit seed never causes checkout, reset, historical reads, or repository
-mutation.
+content, without mutation. Listed files are roots, not hard boundaries. A commit
+seed is discovery evidence, not a comparison base or historical snapshot, and
+never causes checkout, reset, historical reads, or repository mutation.
 
 ## Trace
 
@@ -73,18 +71,8 @@ boundaries, branches, state changes and side effects, errors, and
 outputs/responses. Stop at framework/vendor boundaries and record relied-on
 contracts. Avoid unrelated code and detect cycles.
 
+Trace completion requires every selected root's relevant public/external callers
+and reachable first-party branches to terminate at an output, side effect,
+recorded external boundary, or recorded blind spot.
+
 State unresolved dynamic dispatch, event, or reflection paths as blind spots.
-Findings may target any in-scope traced line.
-
-## Implementation scope output
-
-Before the four shared finding sections, output:
-
-```markdown
-## Scope
-- Requested scope: <commit ref, explicit roots, or descriptive concept>
-- Roots: <files>
-- Traced first-party files/entry points: <files and entry points>
-- External boundaries/contracts: <boundaries and relied-on contracts>
-- Blind spots: <unresolved dynamic paths or None.>
-```
