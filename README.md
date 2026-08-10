@@ -6,6 +6,7 @@ Various project-agnostic engineering agent skills.
 
 - [Install with skills.sh](#install-with-skillssh)
 - [Available skills](#available-skills)
+  - [Dependabot merge](#dependabot-merge)
   - [Generate PR description](#generate-pr-description)
   - [Review PR breaking changes](#review-pr-breaking-changes)
   - [Tight review](#tight-review)
@@ -32,6 +33,19 @@ npx skills add umaraziz0/skills --list
 ```
 
 ## Available skills
+
+### Dependabot merge
+
+Safe Dependabot PR workflow for current GitHub repository resolved by `gh`.
+Always discovers all matching open remote PRs, then requires fresh confirmation
+naming canonical repo, PR number, head/base SHAs, merge method, and action.
+Verifies compatibility, required checks when configured, reviews, and branch
+protections. Repositories may omit CI for Dependabot; explicit SHA-bound
+confirmation remains required and protections are never bypassed.
+
+```sh
+/dependabot-merge
+```
 
 ### Generate PR description
 
