@@ -56,7 +56,8 @@ only — does not merge, approve, or run migrate/seed/install.
 
 ### Tight review
 
-Read-only review with Diff mode by default and explicit Flow mode. Checks
+Read-only implementation review. Starts from a commit, explicit file roots, or
+a feature/domain, then traces relevant current working-tree behavior. Checks
 correctness, spec/ticket compliance, documented repository standards, and
 unnecessary complexity in separate lanes; does not mutate, approve, or request
 changes. A lean combination of:
@@ -66,17 +67,16 @@ changes. A lean combination of:
 - [/caveman-review](https://github.com/JuliusBrussee/caveman/tree/main/skills/caveman-review) - for simplified code review output
 
 ```sh
-/tight-review <fixed-point>
-/tight-review diff <fixed-point>
-/tight-review diff worktree
-/tight-review diff range main feature
-/tight-review flow src/auth.ts src/routes.ts
+/tight-review HEAD
+/tight-review files src/auth.ts src/routes.ts
+/tight-review authentication
 ```
 
-- Merge-base Diff: review `fixed-point...HEAD`.
-- Worktree Diff: review tracked net changes from `HEAD` plus untracked files.
-- Exact-range Diff: review aggregate `base..head`; pass `base^` to include base.
-- Flow: trace current working-tree behavior from listed file roots.
+- Commit ref: use files changed by that commit as discovery seeds, then review
+  their current implementation. The commit is not a diff base or historical
+  snapshot.
+- Files: trace current implementation from explicit roots.
+- Feature/domain: discover a bounded implementation scope, then trace it.
 
 ### SSH
 
