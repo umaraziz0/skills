@@ -1,11 +1,6 @@
 ---
 name: review-pr-breaking
-description: >
-  Identify GitHub PR "breaking" / post-merge ops changes: database migrations,
-  dependency updates, environment file or required env-var changes, seeders
-  that must be run, and queue-worker restarts (e.g. Laravel Jobs). Use when
-  user asks to review a PR for breaking changes, deploy checklist, staging/prod
-  merge readiness, or invokes /review-pr-breaking.
+description: Review a GitHub PR for required post-merge operational actions.
 disable-model-invocation: true
 ---
 
@@ -39,20 +34,39 @@ ambiguous: ask once. Do not guess.
    gh pr diff <PR> --name-only
    ```
 
-3. **Diff candidates only** (batch by category; never dump full PR). For huge
-   lockfiles, summarize bumps from the manifest — do not paste the lockfile:
+3. **Fetch candidate patches only** (batch by category; never expose the full
+   PR diff). Use the PR files API, then filter its local result by candidate
+   filename before reading patches. For huge lockfiles, summarize graph changes
+   from the manifest — do not paste the lockfile:
 
    ```sh
-   gh pr diff <PR> -- <path> [<path>...]
+   repo=$(gh pr view "$PR" --json url --jq '.url | split("/")[3:5] | join("/")')
+   number=$(gh pr view "$PR" --json number --jq '.number')
+   files_tmp=$(mktemp)
+   trap 'rm -f "$files_tmp"' EXIT
+   gh api --paginate --slurp \
+     "repos/$repo/pulls/$number/files?per_page=100" >"$files_tmp"
    ```
+
+   Keep that response in temporary local data; expose only matching
+   `filename`, `status`, and `patch` fields. If a candidate patch is absent or
+   truncated, save `gh pr diff "$PR"` locally and extract only `diff --git`
+   blocks matching candidate paths before reading them. Delete temporary data
+   after inspection.
 
 4. **Classify** with [Detection](#detection). **Output** the [template](#report-template).
    Omit empty sections. If none: **No breaking / post-merge ops changes found**
    (+ brief near-misses optional).
 
+5. **Check completion:** internally classify every changed path exactly once as
+   `finding`, `near-miss`, or `irrelevant`; confirm every finding with diff/hunk
+   evidence. Classify every discovered env access as `required`, `optional`, or
+   `irrelevant`. Report findings, not the internal accounting.
+
 ## Detection
 
-Match on path; confirm with diff when ambiguous.
+Use path to create candidates; confirm every finding in its diff/hunk. A path
+signal alone is never a finding.
 
 ### Database migrations
 
@@ -70,9 +84,12 @@ Manifests/locks: `package.json`, `*lock*`, `composer.*`, `Gemfile*`,
 `requirements*.txt`, `Pipfile*`, `poetry.lock`, `pyproject.toml`, `go.mod`,
 `go.sum`, `Cargo.toml`, `Cargo.lock`.
 
-Report added / removed / major bumps only (skip lockfile-only churn). Note
-native/build/engines/peer changes. Action: repo install command (`npm ci`,
-`composer install`, etc.).
+Any manifest/lock change to the dependency graph (added, removed, resolved
+version, or dependency edge) triggers an install action. Do not treat
+lockfile-only checksum, metadata, ordering, or formatting churn unrelated to
+the graph as install work. Add detailed package bullets only for added,
+removed, major, native/build, `engines`, or peer changes. Action: repo install
+command (`npm ci`, `composer install`, etc.).
 
 ### Environment
 
@@ -82,6 +99,16 @@ var (e.g. `env('NEW_KEY')` with no default).
 
 Report each new/changed/removed **key name only** (never values); required vs
 optional. Action: set on staging/prod / secret store before or with deploy.
+
+Also inspect every changed text source/config path, including unfamiliar
+extensions under config/deploy/infra paths; do not restrict this scan to env
+filenames. On candidate paths, detect env access only on added patch lines
+(`+`, excluding `+++`), never by scanning the repository or whole files. Check
+common access forms such as `process.env`, `import.meta.env`, `os.getenv`,
+`os.environ`, `System.getenv`, `getenv`, `env()`, and equivalent repo idioms.
+Inspect each match in its hunk and classify it `required`, `optional`, or
+`irrelevant` (including test/example/dev-only access). Report actionable
+matches with path/line and key or access name only; never report values.
 
 ### Seeders
 
@@ -124,7 +151,8 @@ Terraform/Pulumi. Skip speculative API "breaking" unless user asked.
 - [ ] `<path>` — <what> — **run:** <migrate cmd or "run migrations">
 
 ## Dependencies
-- [ ] <package> <old> → <new> (added|removed|major) — **run:** <install cmd>
+- [ ] Dependency graph changed — **run:** <install cmd>
+- <package> <old> → <new> — added|removed|major|native/build|engines|peer — <diff evidence>
 
 ## Environment
 - [ ] `<KEY>` — added|changed|removed — required|optional — **set on:** staging/prod
@@ -138,18 +166,15 @@ Terraform/Pulumi. Skip speculative API "breaking" unless user asked.
 ## Other ops
 - [ ] <item> — **action:** <...>
 
-## Suggested order
-1. Set env keys
-2. Install deps (if needed before migrate)
-3. Run migrations
-4. Run seeders (if required)
-5. Deploy app code
-6. Restart queue workers (if required)
-7. Smoke-check
+## Sequencing
+- <evidence-backed order only, with path/repo evidence>
+- If no evidence establishes order: **Operator confirms sequencing.**
 ```
 
 Checkboxes = operator TODOs. Concrete paths/commands when known. High-risk
-first within a section. Scannable deploy cheat sheet.
+first within a section. Omit empty sections. Sequencing is evidence-backed
+only; otherwise use the explicit operator-confirmation line above. Emit one
+sequencing bullet, not a universal deployment order. Scannable deploy cheat sheet.
 
 ## Boundaries
 
