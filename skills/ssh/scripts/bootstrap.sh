@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Load SSH_* from project .env and run one remote command. Run with Shell required_permissions: ["all"].
+# Load supported SSH settings from project .env and run one remote command. Run with Shell required_permissions: ["all"].
 set -euo pipefail
 
 if (( $# > 1 )); then
@@ -98,7 +98,7 @@ while IFS= read -r line || [[ -n $line ]]; do
         (( seen_port == 0 )) || die "duplicate $key on .env line $line_number"
         seen_port=1
         ;;
-      *) die "unknown SSH_* key $key on .env line $line_number" ;;
+      *) continue ;;
     esac
     parse_value "$raw_value"
     case $key in

@@ -21,7 +21,7 @@ consent.
    `bash "<skill-base>/scripts/bootstrap.sh"` with
    `required_permissions: ["all"]`. Never `Read`/`Grep`/`source`/`eval` `.env`.
    Wrapper parses literal `SSH_HOST`, `SSH_USERNAME`, `SSH_PRIVATE_KEY_PATH`,
-   and optional `SSH_PORT` only. Missing or invalid settings stop work.
+   and optional `SSH_PORT` only.
 
    No-argument wrapper invocation runs smoke command `echo ok && hostname`.
    Smoke completes only with exit 0 and output containing `ok` plus hostname.
