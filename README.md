@@ -7,7 +7,6 @@ Various project-agnostic engineering agent skills.
 - [Install with skills.sh](#install-with-skillssh)
 - [Available skills](#available-skills)
   - [Dependabot merge](#dependabot-merge)
-  - [Generate PR description](#generate-pr-description)
   - [Review PR breaking changes](#review-pr-breaking-changes)
   - [Tight review](#tight-review)
   - [SSH](#ssh)
@@ -45,16 +44,6 @@ confirmation remains required and protections are never bypassed.
 
 ```sh
 /dependabot-merge
-```
-
-### Generate PR description
-
-Paste-ready PR description from unpushed commits on the current branch
-(`@{u}..HEAD`). Uses `docs/pull_request_description.md` when present;
-otherwise Summary + Test plan. Does not create, edit, push, or open a PR.
-
-```sh
-/generate-pr-description
 ```
 
 ### Review PR breaking changes

@@ -109,6 +109,7 @@ Always prepend this mandatory Scope metadata; do not merge it into an axis:
 
 ```markdown
 ## Scope
+
 - Requested scope: <commit ref, explicit roots, or descriptive concept>
 - Roots: <files>
 - Traced first-party files/entry points: <files and entry points>
@@ -120,18 +121,23 @@ Then keep axes separate and in this order:
 
 ```markdown
 ## Correctness
+
 <one-line findings, or None.>
 
 ## Spec
+
 <one-line findings, or None.>
 
 ## Standards
+
 <one-line findings, or None.>
 
 ## Simplicity
+
 <one-line findings, or None.>
 
 ## Summary
+
 - Correctness: <count>; worst: <worst finding or None>.
 - Spec: <count>; worst: <worst finding or None>.
 - Standards: <count>; worst: <worst finding or None>.
