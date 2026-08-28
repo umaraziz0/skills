@@ -23,12 +23,6 @@ insufficient for compatibility is **manual review** or **blocked**.
 
 ## Invocation and current repository
 
-The only accepted invocation is:
-
-```text
-/dependabot-merge
-```
-
 Resolve repository before parsing candidates. Run `gh` with `GH_REPO` unset:
 
 ```sh
@@ -108,7 +102,7 @@ Block unless all identity and target gates pass:
 
 Nonmatching authors are excluded from Dependabot candidates. An unexpected
 author/type, closed or draft PR, fork head, target mismatch, unknown SHA, or
-inaccessible REST field is blocked. `mergeable` and
+inaccessible identity, target, state, or SHA REST field is blocked. `mergeable` and
 `mergeStateStatus` from PR metadata must be known and non-conflicting; unknown
 or ambiguous mergeability is blocked.
 
@@ -137,37 +131,75 @@ changes, and major updates, remain manual review unless strong explicit evidence
 explains the change and confirms compatibility. When that evidence resolves
 compatibility, classify as compatible; green CI alone never proves compatibility.
 
-Check remote CI and branch policy:
-
-URL-encode `base.ref` as RFC 3986 `ENCODED_BASE` before both branch requests.
+Check remote CI and branch policy on a best-effort basis. URL-encode `base.ref` as
+RFC 3986 `ENCODED_BASE` before both branch requests.
 
 ```sh
+env -u GH_REPO gh pr checks "$PR" --repo "$TARGET"
 env -u GH_REPO gh pr checks "$PR" --repo "$TARGET" --required
 env -u GH_REPO gh api --hostname "$HOST" --paginate \
   "repos/$REPO/rules/branches/$ENCODED_BASE"
 env -u GH_REPO gh api --hostname "$HOST" \
   "repos/$REPO/branches/$ENCODED_BASE/protection"
+env -u GH_REPO gh api --hostname "$HOST" --paginate \
+  "repos/$REPO/rulesets"
 ```
 
-Treat inaccessible or unclear rules/protection data as blocked. Determine
-required versus optional checks, required approvals/CODEOWNERS, conversation
-resolution, signed commits, linear history, and merge-queue requirements from
-remote evidence. Optional green checks do not replace required checks. An empty
-check rollup is acceptable only when branch rules and protection conclusively
-show no CI checks are required for that PR; record **No CI required by policy**
-as evidence.
+For private organization repositories, treat a rules, ruleset, or branch
+protection response that is inaccessible because of plan/API access—including
+`403`, `404`, or an unsupported-plan response—as **LIMITED** policy evidence.
+Record endpoint and response. Do not block solely for that response and never
+interpret it as proof that no protection exists. Malformed, contradictory, or
+otherwise unclear policy data is **UNKNOWN** and blocks. A valid response that
+shows an unsatisfied rule is **FAIL** and blocks.
+
+Determine required versus optional checks, required approvals/CODEOWNERS,
+conversation resolution, signed commits, linear history, and merge-queue
+requirements from available remote evidence. Optional green checks do not
+replace required checks. A valid policy response may establish **No CI required
+by policy**; an inaccessible policy endpoint may not. An empty check rollup is
+not interpreted as proof that no checks are required.
+
+Use this conservative limited-policy-evidence fallback when any relevant policy,
+required-check, or review evidence is **LIMITED**, not **UNKNOWN**:
+
+- Never use protection bypass, `--admin`, automatic merge, or any other bypass;
+  submit only the explicit SHA-bound merge command and let GitHub enforce policy.
+- `mergeable` and `mergeStateStatus` must be known and non-conflicting.
+- `CHANGES_REQUESTED` blocks.
+- Every check visible in `statusCheckRollup` and in `gh pr checks` must be
+  completed and successful. Evaluate all visible checks, not merely checks
+  reported as required; any visible pending, failed, cancelled, in-progress,
+  incomplete, or unknown check blocks; any other non-success conclusion blocks.
+- If `statusCheckRollup` or the all-checks `gh pr checks` output cannot be read
+  well enough to enumerate visible checks, record CI as UNKNOWN and block. Only
+  the separate `gh pr checks --required` command may be LIMITED when inaccessible.
+- An inaccessible `gh pr checks --required` result may be recorded as LIMITED
+  evidence. It does not mean that no required checks exist. Visible checks from
+  the other sources still control the gate.
+- Inspect PR `reviewDecision` and REST review evidence when available. Missing
+  or unknown reviews do not by themselves block; they block when REST/PR
+  evidence says review is required or the review state fails, including
+  `CHANGES_REQUESTED`. Classify unavailable review evidence as LIMITED when
+  that limitation is recorded, not UNKNOWN. Do not require paid-plan ruleset,
+  branch-protection, or other policy endpoints in this fallback.
+- Positive evidence that a merge queue is required remains blocked/manual; lack
+  of queue evidence caused only by inaccessible policy APIs is LIMITED, not
+  proof that a queue is unnecessary.
 
 Never merge with any failed, cancelled, pending, in-progress, unknown, or
-incomplete required check; missing required reviews; `CHANGES_REQUESTED`;
-conflicts; or unsatisfied/unclear protection. Optional or absent checks do not
-block when policy conclusively requires none. Merge-queue-required bases are
-unsupported in v1: mark candidate blocked/manual and do not enqueue or bypass
-the queue.
+incomplete visible check; missing reviews when REST/PR evidence says review is
+required; `CHANGES_REQUESTED`;
+conflicts; or an explicit unsatisfied policy. Under full policy evidence,
+optional or absent checks do not block only when policy conclusively requires
+none. Under LIMITED policy evidence, use only fallback above. Merge-queue-
+required bases are unsupported in v1: mark candidate blocked/manual and do not
+enqueue or bypass the queue.
 
 Before assigning a verdict or requesting confirmation, emit one concise,
 auditable gate record per PR. Every field must contain supporting evidence with
-a short source (API result, command, or diff path), or `unknown`; never infer a
-pass. Use this shape:
+a short source (API result, command, or diff path); use `UNKNOWN` only when
+genuinely unknown and never infer a pass. Use this shape:
 
 ```text
 PR_NUMBER gate:
@@ -176,24 +208,34 @@ target: PASS|FAIL|UNKNOWN — evidence/source
 base_sha: COMPLETE_SHA|UNKNOWN — evidence/source
 head_sha: COMPLETE_SHA|UNKNOWN — evidence/source
 dependency_compatibility: PASS|FAIL|UNKNOWN — evidence/source
-ci: PASS|FAIL|UNKNOWN — evidence/source
-reviews: PASS|FAIL|UNKNOWN — evidence/source
-rules_protection: PASS|FAIL|UNKNOWN — evidence/source
-queue: PASS|FAIL|UNKNOWN — evidence/source
+ci: PASS|LIMITED|FAIL|UNKNOWN — evidence/source
+reviews: PASS|LIMITED|FAIL|UNKNOWN — evidence/source
+rules_protection: PASS|LIMITED|FAIL|UNKNOWN — evidence/source
+queue: PASS|LIMITED|FAIL|UNKNOWN — evidence/source
 mergeability: PASS|FAIL|UNKNOWN — evidence/source
 ```
 
-`UNKNOWN` cannot produce a **Compatible** verdict.
+Record rules, rulesets, and branch protection under `rules_protection`; any
+plan/API limitation for those endpoints is `LIMITED` with endpoint evidence.
+Use `LIMITED` only for inaccessible plan/API evidence in CI, review, rules,
+protection, or queue gates; do not relabel that limitation `UNKNOWN`. `LIMITED`
+never means pass, no protection, or no required checks. A genuine `UNKNOWN`
+cannot produce a **Compatible** verdict. A **Compatible** verdict with any
+`LIMITED` status is allowed only when every limited-policy fallback condition
+above passes; otherwise it is **Blocked**.
 
 Maintain one current verdict at a time:
 
 - **Compatible** — identity, same-repo target/base, dependency evidence, usage,
-  required CI (or confirmed no-CI policy), reviews, and protections all support
-  merge with no unresolved gate.
+  mergeability, checks, reviews, protections, and queue evidence all support
+  merge with no unresolved gate; when policy evidence is **LIMITED**, every
+  limited-policy fallback condition passes.
 - **Manual review** — strong explicit evidence does not resolve compatibility,
   such as major or unexpected changes or missing release evidence.
 - **Blocked** — identity, SHA, state, mergeability, check, review, protection,
-  or queue gate fails or is unknown.
+  or queue gate fails; a genuine unknown gate remains blocked, except that
+  review/check/policy limitations must be classified **LIMITED** and evaluated
+  by the fallback above.
 
 ## Confirmation and mutation
 
@@ -205,10 +247,22 @@ env -u GH_REPO gh api --hostname "$HOST" "repos/$REPO" --jq \
 ```
 
 Choose `squash` if allowed, the sole enabled method otherwise, or require the
-user to choose one enabled method. Always use an explicit method. Before any
-mutation, output verdicts and exact compatible merge list. Each confirmation
-line must name canonical `TARGET`, PR number, recorded `HEAD_SHA`, recorded
-`BASE_SHA`, `method`, and `action=merge`:
+user to choose one enabled method. Always use an explicit method. After analysis
+and before requesting confirmation or any mutation, emit one concise Markdown
+verdict table in addition to the per-PR gate records, then output exact
+compatible merge list. Keep gate records as source-level audit evidence; table
+values summarize them. Set `policy` to PASS
+when `rules_protection` and `queue` are PASS, LIMITED when neither is FAIL or
+UNKNOWN and at least one is LIMITED, FAIL when either is FAIL, and UNKNOWN when
+neither is FAIL but either is UNKNOWN:
+
+|        PR | update/title         | head SHA | base SHA | compatibility     | checks                    | reviews                   | policy                    | mergeability      | verdict                          | method/reason            |
+| --------: | -------------------- | -------- | -------- | ----------------- | ------------------------- | ------------------------- | ------------------------- | ----------------- | -------------------------------- | ------------------------ |
+| PR_NUMBER | concise update/title | HEAD_SHA | BASE_SHA | PASS/FAIL/UNKNOWN | PASS/LIMITED/FAIL/UNKNOWN | PASS/LIMITED/FAIL/UNKNOWN | PASS/LIMITED/FAIL/UNKNOWN | PASS/FAIL/UNKNOWN | Compatible/Manual review/Blocked | method or concise reason |
+
+Every **Compatible** row still requires its exact SHA-bound confirmation line.
+Each confirmation line must name canonical `TARGET`, PR number, recorded
+`HEAD_SHA`, recorded `BASE_SHA`, `method`, and `action=merge`:
 
 ```text
 Confirm action=merge target=TARGET pr=PR_NUMBER \
@@ -220,7 +274,7 @@ listed values. Initial invocation never counts, even when it says “merge”. A
 discovery request or “merge all” never authorizes a set.
 
 Immediately before each merge, re-fetch REST PR metadata and all relevant checks,
-reviews, rules, protection, and merge permissions. Verify state/draft/identity,
+reviews, rules, protection, rulesets, and merge permissions. Verify state/draft/identity,
 same-repo target, `base.sha == BASE_SHA`, and `head.sha == HEAD_SHA`; recheck
 mergeability and verdict. When base authorization depends on
 `.github/dependabot.yml`, also refetch that file from verified `DEFAULT_BRANCH`,
@@ -238,6 +292,10 @@ env -u GH_REPO gh pr merge "$PR" --repo "$TARGET" --squash \
 Substitute only confirmed enabled `--merge` or `--rebase` method. Never use
 automatic merge mode, `--admin`, force, or any protection bypass. Pending
 requirements are blocked until a later run confirms completion.
+
+GitHub's server-side merge result is final enforcement. A rejected or failed
+merge command is **blocked** and reported with its reason; never retry it with a
+bypass, `--admin`, automatic merge, or another method solely to evade rejection.
 
 After command success, re-fetch REST PR state. Report **merged** only when
 `.merged == true`, `.merged_at` is non-null, and `.merge_commit_sha` is present;
