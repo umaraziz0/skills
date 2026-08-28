@@ -95,7 +95,7 @@ writing output. Every finding is evidence-backed, paste-ready, and exactly one
 line:
 
 ```text
-<file>:L<line>: <severity> <axis-or-simplicity-tag>: <problem>. <concrete fix>.
+- <file>:L<line>: <severity> <axis-or-simplicity-tag>: <problem>. <concrete fix>.
 ```
 
 Use only these severities: `🔴` bug/blocker, `🟡` risk, `🔵` optional
