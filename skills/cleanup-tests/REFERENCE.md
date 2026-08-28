@@ -1,7 +1,28 @@
 # Cleanup-tests reference
 
-Read this after `/tdd` and during classification. This is the canonical
-cleanup rubric; it does not replace `/tdd`.
+Read this during classification. This is the canonical, standalone cleanup
+rubric and test-quality reference for this workflow.
+
+## Local test-quality principles
+
+- Read repository `CONTEXT.md` when present and relevant ADRs before naming
+  contracts or seams. Use the repository's domain vocabulary.
+- A valuable test verifies observable behavior through a public interface or
+  seam, reads like a specification, and survives internal refactors.
+- A seam is the public boundary where behavior is observed. Use documented or
+  user-confirmed seams; do not write or rewrite tests at an unconfirmed seam.
+- Implementation coupling includes private methods, internal collaborators or
+  mocks, call count/order, and verification through side channels. Boundary
+  mocks are allowed only for external APIs, time/randomness, filesystem, and
+  sometimes databases; prefer a test database when practical. Do not mock
+  owned or internal modules.
+- Tautological expectations require an independent source of truth from the
+  evidence ladder below.
+- Preserve one logical behavior/assertion per test. Parameterized rows may share
+  a shape, but each row must remain independently named and diagnosable.
+- Cleanup edits are review/refactoring of existing tests, not a red-green
+  production implementation loop. Preserve observable behavior and never add
+  speculative coverage or features.
 
 ## Independent evidence ladder
 
@@ -42,9 +63,11 @@ test when it uniquely protects a meaningful observable contract or regression.
 
 ## Cross-cutting evidence rules
 
-Mocks are not a category. Follow `/tdd`; mock system boundaries only. Internal
-mocks used merely for speed are evidence of a possible finding, not a reason to
-add more mocks.
+Mocks are not a category. Apply the boundary rule above: mock only external
+APIs, time/randomness, filesystem, and sometimes databases; prefer a test
+database when practical. Never mock owned/internal modules, including merely to
+make tests faster. Internal mocks are evidence of a possible finding, not a
+reason to add more mocks.
 
 Coverage metrics are supporting evidence only. A coverage percentage, uncovered
 line, or coverage increase alone never proves deletion, merging, repair, or

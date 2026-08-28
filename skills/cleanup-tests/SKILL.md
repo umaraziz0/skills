@@ -62,14 +62,13 @@ fixtures, or unrelated tests as ordinary cleanup. A proposed fix needing a
 wider write scope is unresolved until the user explicitly approves a new scope;
 do not make that change in the current scope.
 
-## Authority and discovery
+## Context and discovery
 
-Before making test-quality judgments, consult/call the `tdd` skill. Treat
-`/tdd` as the authoritative reference for test structure, contract strength,
-test doubles, and test verification. Do not duplicate its full guidance here.
-If it is unavailable, report that limitation and do not invent a replacement
-policy; the cleanup-specific invariants in this skill and [REFERENCE.md](REFERENCE.md)
-still apply.
+Load and apply the standalone test-quality principles, evidence ladder, category
+criteria, and action rules in [REFERENCE.md](REFERENCE.md). Before naming
+contracts or seams, read repository `CONTEXT.md` when present and relevant ADRs;
+use their domain vocabulary in the audit and report. Do not infer a contract
+from a test's current assertion, implementation naming, or a private helper.
 
 Then inspect broadly enough to establish evidence while keeping the frozen
 write set fixed:
@@ -130,9 +129,8 @@ Trace setup, action, assertion, important data, mocks, snapshots, and execution
 path. Read source behavior and tests together. A test with no recoverable
 contract or provenance is unresolved; it is not permission to invent one.
 
-Load and apply the canonical evidence ladder, category criteria, and action
-rules in [REFERENCE.md](REFERENCE.md). Every test must appear in the inventory
-and receive exactly one classification: `finding` or `keep`. `keep` is a
+Every test must appear in the inventory and receive exactly one classification:
+`finding` or `keep`. `keep` is a
 classification only: it is never an action, approval target, or final change.
 An actionable finding has one or more canonical categories from the reference
 and exactly one action: `delete`, `repair`, or `merge`. An unsafe finding, an
@@ -173,8 +171,8 @@ Include:
    item accounted for;
 4. all findings in the format above;
 5. unresolved questions and user decisions needed for seams or scope; and
-6. blind spots, including baseline failure, unavailable timing, dynamic test
-   discovery, or an unavailable `/tdd` skill.
+6. blind spots, including baseline failure, unavailable timing, or dynamic test
+   discovery.
 
 Present the exact proposed approval set in the original confirmation. For
 example, resolve “all proven fixes” to `CT-001, CT-004` in the prompt itself.
