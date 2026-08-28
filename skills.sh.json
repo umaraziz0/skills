@@ -4,6 +4,7 @@
     {
       "name": "Engineering",
       "skills": [
+        "cleanup-tests",
         "generate-pr-description",
         "review-pr-breaking",
         "tight-review",

@@ -6,6 +6,7 @@ Various project-agnostic engineering agent skills.
 
 - [Install with skills.sh](#install-with-skillssh)
 - [Available skills](#available-skills)
+  - [Cleanup tests](#cleanup-tests)
   - [Dependabot merge](#dependabot-merge)
   - [Review PR breaking changes](#review-pr-breaking-changes)
   - [Tight review](#tight-review)
@@ -32,6 +33,21 @@ npx skills add umaraziz0/skills --list
 ```
 
 ## Available skills
+
+### Cleanup tests
+
+Evidence-driven test cleanup with an exhaustive whole-suite audit by default.
+Always audits first, then requires confirmation before safe test-only edits;
+explicit narrowed forms support `files`, `diff`, and `feature` scopes. Reviews
+tautological, low-value, duplicate, snapshot, flaky, slow, and unreadable tests
+without changing production code.
+
+```sh
+/cleanup-tests
+/cleanup-tests files tests/auth_test.rb
+/cleanup-tests diff HEAD~1
+/cleanup-tests feature authentication
+```
 
 ### Dependabot merge
 
