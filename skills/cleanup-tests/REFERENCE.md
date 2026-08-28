@@ -97,7 +97,11 @@ and exactly one action from this enum:
 
 An unclear contract, missing provenance, unconfirmed seam, unsafe mutation,
 insufficient independent evidence, or lack of a safe change is `unresolved` and
-non-approvable. Do not assign it an action. Every actionable record names
+non-approvable. Do not assign it an action. Every unresolved finding must carry
+a mandatory `next_step` naming the concrete evidence, user decision, seam
+confirmation, provenance, or exact scope change needed to resolve it. The
+`next_step` must not recommend or imply a code edit before the finding becomes
+actionable. Actionable findings omit `next_step`. Every actionable record names
 verification for the affected test, relevant repetition where applicable, and
 the broader command where practical.
 
@@ -116,6 +120,7 @@ classification: finding|keep
 finding_ids: <stable IDs or None>
 runtime: <baseline/timing/repetition evidence or blind spot>
 scope: <frozen writable path | read-only path>
+next_step: <required concrete resolution evidence/decision/scope change | None for actionable or keep>
 ```
 
 The final report may summarize this record, but it must account for every

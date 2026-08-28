@@ -154,6 +154,7 @@ Report every finding with this information:
   evidence: <direct evidence, independent provenance, and runtime evidence> |
   status: actionable|unresolved |
   action: delete|repair|merge (actionable only) |
+  next_step: <concrete evidence, decision, seam confirmation, provenance, or scope change> (unresolved only) |
   verify: <required verification>
 ```
 
@@ -161,7 +162,11 @@ Use stable IDs for the rest of the session; do not renumber them after the user
 chooses fixes. Include exact file/line locations (or the nearest stable test
 declaration when a runner generates code). Explain low confidence, missing
 provenance, and ambiguous seams. Do not put an action on an unresolved finding;
-state why it is non-approvable instead.
+state why it is non-approvable instead. Every unresolved finding must include a
+concrete `next_step:` naming the evidence, user decision, seam confirmation,
+provenance, or exact scope change needed to resolve it. The next step must not
+recommend or imply a code edit before the finding becomes actionable. Omit
+`next_step` for actionable findings.
 
 Include:
 
