@@ -7,7 +7,6 @@ Various project-agnostic engineering agent skills.
 - [Install with skills.sh](#install-with-skillssh)
 - [Available skills](#available-skills)
   - [Cleanup tests](#cleanup-tests)
-  - [Dependabot merge](#dependabot-merge)
   - [Review PR breaking changes](#review-pr-breaking-changes)
   - [Tight review](#tight-review)
   - [SSH](#ssh)
@@ -47,19 +46,6 @@ without changing production code.
 /cleanup-tests files tests/auth_test.rb
 /cleanup-tests diff HEAD~1
 /cleanup-tests feature authentication
-```
-
-### Dependabot merge
-
-Safe Dependabot PR workflow for current GitHub repository resolved by `gh`.
-Always discovers all matching open remote PRs, then requires fresh confirmation
-naming canonical repo, PR number, head/base SHAs, merge method, and action.
-Verifies compatibility, required checks when configured, reviews, and branch
-protections. Repositories may omit CI for Dependabot; explicit SHA-bound
-confirmation remains required and protections are never bypassed.
-
-```sh
-/dependabot-merge
 ```
 
 ### Review PR breaking changes
