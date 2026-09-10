@@ -7,6 +7,7 @@ Various project-agnostic engineering agent skills.
 - [Install with skills.sh](#install-with-skillssh)
 - [Available skills](#available-skills)
   - [Cleanup tests](#cleanup-tests)
+  - [PR and babysit](#pr-and-babysit)
   - [Review PR breaking changes](#review-pr-breaking-changes)
   - [Tight review](#tight-review)
   - [SSH](#ssh)
@@ -46,6 +47,17 @@ without changing production code.
 /cleanup-tests files tests/auth_test.rb
 /cleanup-tests diff HEAD~1
 /cleanup-tests feature authentication
+```
+
+### PR and babysit
+
+Publish the current branch’s committed history (leave the starting dirty tree
+alone), open or reuse a PR to the default branch, fill
+`docs/pull_request_template.md` when present, then watch CI and apply up to
+three diagnose-fix-push attempts until required checks are green.
+
+```sh
+/pr-and-babysit
 ```
 
 ### Review PR breaking changes
