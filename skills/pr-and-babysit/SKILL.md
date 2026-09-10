@@ -39,11 +39,15 @@ then `git push`. `origin/<branch>` must contain local HEAD.
 Reuse `gh pr view` when this branch already has a PR. Otherwise create against
 the default branch.
 
-Fill the first template that exists:
+Keep the first template that exists as the outline:
 `docs/pull_request_template.md`, then `.github/pull_request_template.md`, then
 `PULL_REQUEST_TEMPLATE.md`. Fill every section from `git log` and `git diff`
 versus base. No template: Summary plus Test plan. Title from the branch’s
-commits.
+commits. When reusing a PR, write the body only if it is empty or still the
+unfilled template.
+
+If a `technical-writing` skill is available, read its `SKILL.md` and write the
+filled sections to that bar. Keep the template headings.
 
 Done when one PR URL exists and its base is the default branch.
 
