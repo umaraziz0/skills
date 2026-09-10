@@ -1,5 +1,36 @@
 # Changelog
 
+## [2.0.0](https://github.com/umaraziz0/skills/compare/v1.1.2...v2.0.0) (2026-09-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove `dependabot-merge`
+* sunset `generate-pr-description`, agents can directly create PR & use template
+
+### Features
+
+* create `cleanup-tests` skill ([8645504](https://github.com/umaraziz0/skills/commit/864550441c52b9a6fe891ccbf5bd0451b9b92ed8))
+* create `dependabot-merge` skill ([c24927c](https://github.com/umaraziz0/skills/commit/c24927c114b1a1ed089a57335b534680cdfc2c30))
+* create `pr-and-babysit` skill ([3403530](https://github.com/umaraziz0/skills/commit/34035308436b0051439b907528694a74daef3175))
+* sunset `generate-pr-description`, agents can directly create PR & use template ([2961dfd](https://github.com/umaraziz0/skills/commit/2961dfddb70f70390fd17d5787f5cb9b044097f6))
+
+
+### Bug Fixes
+
+* **cleanup-tests:** remove `/tdd` dependency ([cbedded](https://github.com/umaraziz0/skills/commit/cbedded323a40998a05ad1cfa81f24e1a1aed172))
+* **clenaup-tests:** add `next-step` attribute to unresolved findings ([af6f59b](https://github.com/umaraziz0/skills/commit/af6f59bdbe4b9c43a6864d0565b11259b98f82f5))
+* **dependabot-merge:** lax invocation ([44fac72](https://github.com/umaraziz0/skills/commit/44fac72de72cd77cb6decbd3542ea6f4a08ca51b))
+* **dependabot-merge:** optimize with guidelines ([7100225](https://github.com/umaraziz0/skills/commit/7100225dba0c83afa38327dfa6e19b64fdd40ef2))
+* **generate-pr-description:** optimize skill against guidelines ([504e53a](https://github.com/umaraziz0/skills/commit/504e53a67ef0d4d1a2a82f96c457bb1d2c0e39a5))
+* remove `dependabot-merge` ([0b438e7](https://github.com/umaraziz0/skills/commit/0b438e7e37d6a6804cc2ffc3a350889b18f384eb))
+* **review-pr-breaking:** optimize skill against guidelines ([929a9b4](https://github.com/umaraziz0/skills/commit/929a9b4bca8113de451c623982fdf0f6178944f2))
+* **ssh:** fix not allowing other `SSH_` prefixed envs ([aed1de1](https://github.com/umaraziz0/skills/commit/aed1de119192d2a561ec96d4e63ea206a5df7054))
+* **ssh:** optimize with guidelines ([42999c0](https://github.com/umaraziz0/skills/commit/42999c0673e7fc5166d664afa24e5f7687cf212e))
+* **tight-review:** fix output formatting ([c9156ea](https://github.com/umaraziz0/skills/commit/c9156ea926dc4d7e0387f040401a44dc010c5be5))
+* **tight-review:** optimize skill with guidelines ([cd9eee0](https://github.com/umaraziz0/skills/commit/cd9eee0fa4942d5cbc0749d5b1e1812ada542927))
+* **tight-review:** update to implementation-only ([26b36bb](https://github.com/umaraziz0/skills/commit/26b36bbcdf16b7dfa0814acc58cd8e3370bbb068))
+
 ## [1.1.2](https://github.com/umaraziz0/skills/compare/v1.1.1...v1.1.2) (2026-08-02)
 
 
