@@ -70,6 +70,10 @@ behavior. “Missing package” applies only when documentation names a dependen
 presents a package list as complete, or requires a package for a documented
 workflow. Do not require every declared dependency to appear in documentation.
 
+If a `technical-writing` skill is available, read its `SKILL.md` before editing
+and write every changed passage to that bar. Preserve the document's existing
+mode, structure, and voice, and leave unrelated prose unchanged.
+
 For each mismatch:
 
 - Edit the eligible documentation when current repository evidence establishes

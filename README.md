@@ -101,8 +101,8 @@ changes. A lean combination of:
 
 Reconcile all tracked Markdown and MDX documentation with package manifests,
 lockfiles, configuration, and current implementation. The skill updates proven
-drift and leaves code and dependency files unchanged. It reports ambiguous
-claims without guessing.
+drift with `technical-writing` when that skill is installed, and leaves code and
+dependency files unchanged. It reports ambiguous claims without guessing.
 
 ```sh
 /update-docs
