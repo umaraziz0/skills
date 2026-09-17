@@ -26,10 +26,17 @@ Exclude `CHANGELOG.md`, vendored documentation, generated documentation, and
 every skill package. A skill package is any directory that contains `SKILL.md`;
 exclude that file and all documentation below its directory. Also exclude any
 path that repository instructions or file headers mark as generated or
-protected. Treat a symlink according to its tracked path and never write through
-it to an out-of-scope target. Record every eligible document and every exclusion
-with its reason. If the repository is not Git-indexed, stop without edits and
-report that tracked documentation cannot be established.
+protected.
+
+Before freezing the scope, detect Laravel through a root `artisan` plus Laravel
+bootstrap structure, or by minimally checking whether `composer.json` declares
+`laravel/framework`. In a Laravel project, exclude every `AGENTS.md` and
+`CLAUDE.md` from inspection and editing because Laravel Boost manages them.
+
+Treat a symlink according to its tracked path and never write through it to an
+out-of-scope target. Record every eligible document and every exclusion with its
+reason. If the repository is not Git-indexed, stop without edits and report that
+tracked documentation cannot be established.
 
 The scope is frozen when every tracked candidate is classified as eligible or
 excluded and the initial user-owned changes are recorded.
@@ -44,11 +51,9 @@ verify claims present in the eligible documents:
    documentation. Pair it with the matching tracked lockfile: npm
    (`package-lock.json` or `npm-shrinkwrap.json`), pnpm (`pnpm-lock.yaml`), Yarn
    (`yarn.lock`), or Bun (`bun.lock` or `bun.lockb`).
-2. Detect Laravel through a root `artisan` plus Laravel bootstrap structure, or
-   by minimally checking whether `composer.json` declares `laravel/framework`.
-   Only for a detected Laravel project, inspect the relevant `composer.json`
-   fields and pair them with `composer.lock` when present. Ignore Composer for
-   non-Laravel projects.
+2. For a Laravel project identified during scope discovery, inspect the relevant
+   `composer.json` fields and pair them with `composer.lock` when present. Ignore
+   Composer for non-Laravel projects.
 3. Trace documented scripts, configuration, entry points, public interfaces,
    environment-variable names, paths, CLI options, and feature behavior into
    focused implementation and tests. Read enough surrounding code to distinguish
