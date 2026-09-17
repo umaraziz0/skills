@@ -9,6 +9,7 @@
         "pr-and-babysit",
         "review-pr-breaking",
         "tight-review",
+        "update-docs",
         "ssh"
       ]
     }

@@ -10,6 +10,7 @@ Various project-agnostic engineering agent skills.
   - [PR and babysit](#pr-and-babysit)
   - [Review PR breaking changes](#review-pr-breaking-changes)
   - [Tight review](#tight-review)
+  - [Update docs](#update-docs)
   - [SSH](#ssh)
 
 ## Install with skills.sh
@@ -95,6 +96,17 @@ changes. A lean combination of:
   snapshot.
 - Files: trace current implementation from explicit roots.
 - Feature/domain: discover a bounded implementation scope, then trace it.
+
+### Update docs
+
+Reconcile all tracked Markdown and MDX documentation with package manifests,
+lockfiles, configuration, and current implementation. The skill updates proven
+drift and leaves code and dependency files unchanged. It reports ambiguous
+claims without guessing.
+
+```sh
+/update-docs
+```
 
 ### SSH
 
