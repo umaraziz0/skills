@@ -22,7 +22,9 @@ can be distinguished from this run. Enumerate the tracked root `README*` files
 and every tracked Markdown or MDX file, including `AGENTS.md`, `CLAUDE.md`, and
 files under `docs/`.
 
-Exclude `CHANGELOG.md`, vendored documentation, generated documentation, and any
+Exclude `CHANGELOG.md`, vendored documentation, generated documentation, and
+every skill package. A skill package is any directory that contains `SKILL.md`;
+exclude that file and all documentation below its directory. Also exclude any
 path that repository instructions or file headers mark as generated or
 protected. Treat a symlink according to its tracked path and never write through
 it to an out-of-scope target. Record every eligible document and every exclusion
