@@ -22,11 +22,11 @@ can be distinguished from this run. Enumerate the tracked root `README*` files
 and every tracked Markdown or MDX file, including `AGENTS.md`, `CLAUDE.md`, and
 files under `docs/`.
 
-Exclude `CHANGELOG.md`, vendored documentation, generated documentation, and
-every skill package. A skill package is any directory that contains `SKILL.md`;
-exclude that file and all documentation below its directory. Also exclude any
-path that repository instructions or file headers mark as generated or
-protected.
+Exclude `CHANGELOG.md`, `CONTRIBUTING.md`, vendored documentation, generated
+documentation, and every skill package. A skill package is any directory that
+contains `SKILL.md`; exclude that file and all documentation below its directory.
+Also exclude any path that repository instructions or file headers mark as
+generated or protected.
 
 Before freezing the scope, detect Laravel through a root `artisan` plus Laravel
 bootstrap structure, or by minimally checking whether `composer.json` declares
