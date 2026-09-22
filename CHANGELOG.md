@@ -1,5 +1,27 @@
 # Changelog
 
+## [3.0.0](https://github.com/umaraziz0/skills/compare/v2.0.0...v3.0.0) (2026-09-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* separate `pr-and-babysit` into `file-pr` and `babysit-pr`
+
+### Features
+
+* create `update-docs` skill ([94b4a80](https://github.com/umaraziz0/skills/commit/94b4a80544edbffa8feb8aa1e6c74da28e351b62))
+* separate `pr-and-babysit` into `file-pr` and `babysit-pr` ([3b2df22](https://github.com/umaraziz0/skills/commit/3b2df22ecfd46249f3fb5b7f4cefda4c54a40fcc))
+
+
+### Bug Fixes
+
+* **pr-and-babysit:** use `technical-writing` skill on PR desc if available ([fd792b9](https://github.com/umaraziz0/skills/commit/fd792b91ce608e941921c519829e00990f6ad5f2))
+* **update-docs:** call `technical-writing` when available ([59790e4](https://github.com/umaraziz0/skills/commit/59790e4661203b7d1a298898964f9d8506c54a18))
+* **update-docs:** exclude `AGENTS.md` files in laravel projects - assume managed by boost ([70ba41c](https://github.com/umaraziz0/skills/commit/70ba41c4dc97d370ea865a1beef4777013e70088))
+* **update-docs:** exclude `CONTRIBUTING.md` ([a7d1703](https://github.com/umaraziz0/skills/commit/a7d1703955010db457745739f3a7c392dbef0271))
+* **update-docs:** exclude skill files ([26cfd1b](https://github.com/umaraziz0/skills/commit/26cfd1be018c43ee638201a3627941f7d80b9dff))
+* **update-docs:** optimize skill ([a250ccd](https://github.com/umaraziz0/skills/commit/a250ccdb001d8e7d8c6cde4b7a9567041d1b102c))
+
 ## [2.0.0](https://github.com/umaraziz0/skills/compare/v1.1.2...v2.0.0) (2026-09-10)
 
 
