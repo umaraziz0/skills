@@ -19,7 +19,7 @@ throughout this run; stage only files you edited for the current attempt.
 ## 1. Resolve PR
 
 Use `gh pr view` on the checked-out branch. If no PR exists for that branch,
-stop and report that `/file-pr` can open one. Record the PR URL and head branch.
+stop and report it. Record the PR URL and head branch.
 
 Done when the PR exists and its head is the checked-out branch.
 
