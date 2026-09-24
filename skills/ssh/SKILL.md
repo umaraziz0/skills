@@ -9,6 +9,14 @@ disable-model-invocation: true
 Use `scripts/bootstrap.sh` as sole entrypoint. `/ssh` alone is not `.env`
 consent.
 
+**Privilege handoff.** For any remote command that requires `sudo` or `su`,
+including read-only commands, give the user the exact command to run on the
+server and ask them to paste its output and exit status. If the command is
+dangerous, include its risk and a safer alternative before asking them to run
+it. Use the returned output as evidence for the next step. Never send `sudo`
+or `su` through the wrapper or ask for the user's password. If the handoff is
+the only remote work, skip `.env` consent and the SSH smoke command.
+
 ## Workflow
 
 1. **Consent and smoke.** Before first `.env` access this session, ask: “May I
@@ -41,7 +49,7 @@ consent.
    services, packages, network, containers, or Kubernetes; exposes/overwrites
    secrets; pipes content to a shell; is irreversible; or may take host/app
    offline is **dangerous**. Examples: `rm`, destructive `truncate`/redirects,
-   `chmod`/`chown`, mutating `sudo`/`su`, `kill`, reboot/shutdown,
+   `chmod`/`chown`, `kill`, reboot/shutdown,
    `systemctl stop|restart|disable|mask`, package install/remove, `docker rm`/
    `rmi`/`system prune`, `kubectl delete`, scale-to-zero, drain/cordon,
    `DROP`/`TRUNCATE`/broad `DELETE`, migrations, `FLUSH*`, queue purge,
@@ -49,7 +57,7 @@ consent.
    and `curl|wget … | sh`. Read/list/status/health checks are safe only when
    bounded. Unsure = dangerous.
 
-3. **Confirm dangerous work.** Do not run dangerous command. Show exact
+3. **Confirm dangerous agent-run work.** Do not run dangerous command. Show exact
    command, one-line risk, and safer alternative; ask confirmation for that
    exact command. Run only explicit “yes, run it” or “confirm”. Vague “ok” on a
    broader plan requires asking again. Refusal keeps session read-only; never
@@ -78,11 +86,13 @@ consent.
 
 ## Completion checklist
 
-- [ ] Consent preceded first `.env` access this session.
-- [ ] No-arg smoke exited 0 and output contained `ok` plus hostname; otherwise
-      session stopped before requested remote work.
-- [ ] Effect was classified; dangerous work had exact confirmation.
+- [ ] Consent preceded first `.env` access, if any, this session.
+- [ ] Before agent-run remote work, no-arg smoke exited 0 and output contained
+      `ok` plus hostname; otherwise agent-run remote work stopped.
+- [ ] Effect was classified; dangerous agent-run work had exact confirmation.
+- [ ] Any `sudo` or `su` command was given to the user to run on the server; its
+      output and exit status were requested. Neither went through the wrapper.
 - [ ] One-command wrapper used absolute loader-reported skill base and `all`
-      permissions.
+      permissions for agent-run remote work.
 - [ ] Output was bounded and report omitted secrets/key path while allowing
       host/user.
