@@ -5,7 +5,7 @@ rubric and test-quality reference for this workflow.
 
 ## Local test-quality principles
 
-- Read repository `CONTEXT.md` when present and relevant ADRs before naming
+- Read repository `GLOSSARY.md` when present and relevant ADRs before naming
   contracts or seams. Use the repository's domain vocabulary.
 - A valuable test verifies observable behavior through a public interface or
   seam, reads like a specification, and survives internal refactors.

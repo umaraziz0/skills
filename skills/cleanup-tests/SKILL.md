@@ -66,7 +66,7 @@ do not make that change in the current scope.
 
 Load and apply the standalone test-quality principles, evidence ladder, category
 criteria, and action rules in [REFERENCE.md](REFERENCE.md). Before naming
-contracts or seams, read repository `CONTEXT.md` when present and relevant ADRs;
+contracts or seams, read repository `GLOSSARY.md` when present and relevant ADRs;
 use their domain vocabulary in the audit and report. Do not infer a contract
 from a test's current assertion, implementation naming, or a private helper.
 
