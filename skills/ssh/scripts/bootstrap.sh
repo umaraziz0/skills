@@ -65,10 +65,12 @@ SSH_HOST=
 SSH_USERNAME=
 SSH_PRIVATE_KEY_PATH=
 SSH_PORT=
+SSH_KNOWN_HOSTS_PATH=
 seen_host=0
 seen_username=0
 seen_key_path=0
 seen_port=0
+seen_known_hosts_path=0
 line_number=0
 while IFS= read -r line || [[ -n $line ]]; do
   line_number=$((line_number + 1))
@@ -98,6 +100,10 @@ while IFS= read -r line || [[ -n $line ]]; do
         (( seen_port == 0 )) || die "duplicate $key on .env line $line_number"
         seen_port=1
         ;;
+      SSH_KNOWN_HOSTS_PATH)
+        (( seen_known_hosts_path == 0 )) || die "duplicate $key on .env line $line_number"
+        seen_known_hosts_path=1
+        ;;
       *) continue ;;
     esac
     parse_value "$raw_value"
@@ -106,6 +112,7 @@ while IFS= read -r line || [[ -n $line ]]; do
       SSH_USERNAME) SSH_USERNAME=$PARSED_VALUE ;;
       SSH_PRIVATE_KEY_PATH) SSH_PRIVATE_KEY_PATH=$PARSED_VALUE ;;
       SSH_PORT) SSH_PORT=$PARSED_VALUE ;;
+      SSH_KNOWN_HOSTS_PATH) SSH_KNOWN_HOSTS_PATH=$PARSED_VALUE ;;
     esac
   fi
 done < .env
@@ -126,19 +133,39 @@ if [[ -n $SSH_PORT ]]; then
   fi
 fi
 
-# Quoted ~/path remains literal data. Match it without tilde expansion.
-if [[ $SSH_PRIVATE_KEY_PATH == "~/"* ]]; then
-  [[ -n ${HOME:-} ]] || die 'HOME is required to resolve SSH_PRIVATE_KEY_PATH'
-  SSH_PRIVATE_KEY_PATH="$HOME/${SSH_PRIVATE_KEY_PATH#"~/"}"
-fi
+resolve_path() {
+  local name=$1 value=$2
+  # Quoted ~/path remains literal data. Match it without tilde expansion.
+  if [[ $value == "~/"* ]]; then
+    [[ -n ${HOME:-} ]] || die "HOME is required to resolve $name"
+    value="$HOME/${value#"~/"}"
+  fi
+  # Relative path → this local repo root
+  case "$value" in
+    /*) ;;
+    *) value="$REPO_ROOT/$value" ;;
+  esac
+  RESOLVED_PATH=$value
+}
 
-# Relative path → this local repo root
-case "$SSH_PRIVATE_KEY_PATH" in
-  /*) ;;
-  *) SSH_PRIVATE_KEY_PATH="$REPO_ROOT/$SSH_PRIVATE_KEY_PATH" ;;
-esac
-
+resolve_path SSH_PRIVATE_KEY_PATH "$SSH_PRIVATE_KEY_PATH"
+SSH_PRIVATE_KEY_PATH=$RESOLVED_PATH
 [[ -f $SSH_PRIVATE_KEY_PATH ]] || die 'private key file not found after resolve'
+
+if [[ -n $SSH_KNOWN_HOSTS_PATH ]]; then
+  resolve_path SSH_KNOWN_HOSTS_PATH "$SSH_KNOWN_HOSTS_PATH"
+  SSH_KNOWN_HOSTS_PATH=$RESOLVED_PATH
+else
+  [[ -n ${HOME:-} ]] || die 'HOME is required to locate known_hosts'
+  SSH_KNOWN_HOSTS_PATH="$HOME/.ssh/known_hosts"
+fi
+[[ -f $SSH_KNOWN_HOSTS_PATH ]] || die 'known_hosts file not found after resolve'
+
+# Host keys are pinned, never learned: an unknown host stops here.
+known_host=$SSH_HOST
+[[ -n $SSH_PORT && $port_without_zeroes != 22 ]] && known_host="[$SSH_HOST]:$port_without_zeroes"
+ssh-keygen -F "$known_host" -f "$SSH_KNOWN_HOSTS_PATH" >/dev/null 2>&1 || \
+  die "host key not pinned for $known_host; user must verify and pin it"
 
 remote_command='echo ok && hostname'
 (( $# == 1 )) && remote_command=$1
@@ -146,10 +173,13 @@ remote_command='echo ok && hostname'
 ssh_argv=(
   ssh
   -F /dev/null
+  -n
+  -T
   -i "$SSH_PRIVATE_KEY_PATH"
   -o IdentitiesOnly=yes
   -o BatchMode=yes
-  -o StrictHostKeyChecking=accept-new
+  -o StrictHostKeyChecking=yes
+  -o "UserKnownHostsFile=$SSH_KNOWN_HOSTS_PATH"
   -o ConnectTimeout=10
 )
 [[ -n $SSH_PORT ]] && ssh_argv+=(-p "$SSH_PORT")
