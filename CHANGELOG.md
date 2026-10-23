@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.0.1](https://github.com/umaraziz0/skills/compare/v3.0.0...v3.0.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **babysit-pr:** remove mention of `file-pr` ([9917f36](https://github.com/umaraziz0/skills/commit/9917f36ae02507f215a9303f0e6222e70c92444f))
+* **ssh:** harden security ([a4ac04e](https://github.com/umaraziz0/skills/commit/a4ac04e22f76475698dafc66c5cd80551f7de260))
+* **ssh:** prompt user for any `sudo` commands ([5ef4e16](https://github.com/umaraziz0/skills/commit/5ef4e16255fa4232e9deb8d126b9c98546cab74e))
+
 ## [3.0.0](https://github.com/umaraziz0/skills/compare/v2.0.0...v3.0.0) (2026-09-22)
 
 
