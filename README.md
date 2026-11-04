@@ -12,7 +12,6 @@ Various project-agnostic engineering agent skills.
   - [Review PR breaking changes](#review-pr-breaking-changes)
   - [Tight review](#tight-review)
   - [Update docs](#update-docs)
-  - [SSH](#ssh)
 
 ## Install with skills.sh
 
@@ -116,15 +115,4 @@ dependency files unchanged. It reports ambiguous claims without guessing.
 
 ```sh
 /update-docs
-```
-
-### SSH
-
-Thin SSH wrapper. Ask once per session, then load **only `SSH_*` lines** from
-project `.env` (`SSH_HOST`, `SSH_USERNAME`, `SSH_PRIVATE_KEY_PATH`) — never
-source the whole file. Run remote commands, browse the filesystem, and debug
-the host. Destructive commands require explicit confirmation before run.
-
-```sh
-/ssh
 ```
