@@ -13,6 +13,7 @@ Various project-agnostic engineering agent skills.
   - [Tight review](#tight-review)
   - [Update docs](#update-docs)
   - [Verify implementation](#verify-implementation)
+  - [Implement with verify](#implement-with-verify)
 
 ## Install with skills.sh
 
@@ -133,3 +134,13 @@ implementing.
 /verify-implementation booking form error states
 ```
 
+### Implement with verify
+
+Matt Pocock's `/implement` skill with [`/verify-implementation`](#verify-implementation) added.
+Calls `tdd` and `code-review` skills; install them alongside this one.
+
+```sh
+/implement-with-verify
+/implement-with-verify #123
+/implement-with-verify docs/specs/booking-form.md
+```

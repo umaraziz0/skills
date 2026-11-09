@@ -12,6 +12,7 @@
         "tight-review",
         "update-docs",
         "verify-implementation",
+        "implement-with-verify",
         "ssh"
       ]
     }
