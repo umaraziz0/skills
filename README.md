@@ -12,6 +12,7 @@ Various project-agnostic engineering agent skills.
   - [Review PR breaking changes](#review-pr-breaking-changes)
   - [Tight review](#tight-review)
   - [Update docs](#update-docs)
+  - [Verify implementation](#verify-implementation)
 
 ## Install with skills.sh
 
@@ -116,3 +117,19 @@ dependency files unchanged. It reports ambiguous claims without guessing.
 ```sh
 /update-docs
 ```
+
+### Verify implementation
+
+Verify a change by exercising it rather than reading it. The skill builds a
+scenario from every spec behaviour and runs the repository's own checks. It
+then drives the real app, endpoint, CLI, migration, or mail flow, fixing minor
+defects and asking before major ones. Last, it restores any local data it
+changed and reports a scenario matrix. Agents can also run it on their own after
+implementing.
+
+```sh
+/verify-implementation
+/verify-implementation HEAD~2..HEAD
+/verify-implementation booking form error states
+```
+

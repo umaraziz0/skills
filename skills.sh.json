@@ -11,6 +11,7 @@
         "review-pr-breaking",
         "tight-review",
         "update-docs",
+        "verify-implementation",
         "ssh"
       ]
     }
