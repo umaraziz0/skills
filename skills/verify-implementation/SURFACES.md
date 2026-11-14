@@ -8,6 +8,15 @@ matrix uses.
 - Use the browser tool the host provides. Close every tab you open.
 - Check at least one mobile and one desktop viewport. At each one, confirm the
   page has no horizontal scroll.
+- Look at the page. At each viewport, take a screenshot and view the image
+  itself, beside an existing sibling page or component. Measurements answer
+  only the questions you thought to ask; the look catches spacing, alignment,
+  and clipping you did not predict.
+- View or copy each screenshot to the scratchpad before the next run: some
+  runners empty their screenshot folder when a run starts (Pest's browser
+  plugin does).
+- Where the change overrides a library default (a class, a margin, a token),
+  measure what the default gave and confirm the override still gives it.
 - Target elements by locator or accessibility ref. Before you click by
   coordinates, confirm the viewport width matches the screenshot width, because
   scaled screenshots shift clicks.
@@ -23,7 +32,8 @@ matrix uses.
 - When snapshots time out or the page is long, measure with script evaluation:
   bounding boxes, text content, `scrollWidth`.
 
-Evidence: visible text, element state, measurements, network status.
+Evidence: a viewed screenshot per viewport, visible text, element state,
+measurements, network status.
 
 ## HTTP API
 

@@ -40,7 +40,8 @@ List every behaviour the spec promises:
 - each error or status branch;
 - validation rules;
 - edge data;
-- responsive and locale variants, where the change has UI.
+- responsive and locale variants, where the change has UI;
+- the rendered look at each viewport, where the change has UI.
 
 Give each scenario one surface from [SURFACES.md](SURFACES.md).
 
@@ -75,7 +76,9 @@ Some branches are hard to reach. Use the first method that works:
    intercepted route;
 4. **forced**: component state set directly.
 
-Label each result with the method that produced it.
+Label each result with the method that produced it. A row passes on evidence
+you saw in this run. A row whose evidence you could not get or could not view
+is `blocked`.
 
 Done when every matrix row has a result.
 
