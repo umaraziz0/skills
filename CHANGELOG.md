@@ -1,5 +1,23 @@
 # Changelog
 
+## [3.1.0](https://github.com/umaraziz0/skills/compare/v3.0.0...v3.1.0) (2026-11-14)
+
+
+### Features
+
+* create `implement-with-verify` skill ([cb0ff1d](https://github.com/umaraziz0/skills/commit/cb0ff1d99a3bc8280b1a9d069c4956e18dfcb899))
+* **verify-implementation:** add skill that exercises a change end to end ([3b18acd](https://github.com/umaraziz0/skills/commit/3b18acd9829109650fae736c206a7474e90ea8ed))
+
+
+### Bug Fixes
+
+* **babysit-pr:** prompt user on major fixes ([fc85240](https://github.com/umaraziz0/skills/commit/fc852404ffeddfa861d2a64f894395224b137ccc))
+* **babysit-pr:** remove mention of `file-pr` ([9917f36](https://github.com/umaraziz0/skills/commit/9917f36ae02507f215a9303f0e6222e70c92444f))
+* remove ssh skill ([7c69b23](https://github.com/umaraziz0/skills/commit/7c69b232dcc4a9ff86e89da82592428f8669da56))
+* **ssh:** harden security ([a4ac04e](https://github.com/umaraziz0/skills/commit/a4ac04e22f76475698dafc66c5cd80551f7de260))
+* **ssh:** prompt user for any `sudo` commands ([5ef4e16](https://github.com/umaraziz0/skills/commit/5ef4e16255fa4232e9deb8d126b9c98546cab74e))
+* **verify-implementation:** require a viewed screenshot for UI checks ([327bb7e](https://github.com/umaraziz0/skills/commit/327bb7e9a40f4ea22a1d079403969e47c24533d1))
+
 ## [3.0.0](https://github.com/umaraziz0/skills/compare/v2.0.0...v3.0.0) (2026-09-22)
 
 
