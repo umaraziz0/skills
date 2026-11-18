@@ -6,7 +6,6 @@
       "skills": [
         "cleanup-tests",
         "generate-pr-description",
-        "file-pr",
         "babysit-pr",
         "review-pr-breaking",
         "tight-review",
