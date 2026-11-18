@@ -4,15 +4,12 @@
     {
       "name": "Engineering",
       "skills": [
-        "cleanup-tests",
-        "generate-pr-description",
         "babysit-pr",
         "review-pr-breaking",
         "tight-review",
         "update-docs",
         "verify-implementation",
-        "implement-with-verify",
-        "ssh"
+        "implement-with-verify"
       ]
     }
   ]
