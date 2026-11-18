@@ -1,6 +1,7 @@
 ---
 name: update-docs
 description: Reconcile repository documentation with dependencies and current implementation.
+disable-model-invocation: true
 ---
 
 # Update docs
