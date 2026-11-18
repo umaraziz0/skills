@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.1.1](https://github.com/umaraziz0/skills/compare/v3.1.0...v3.1.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* **cleanup-tests:** remove skill for caldoai `prune-tests` ([543dda9](https://github.com/umaraziz0/skills/commit/543dda9bddf3131540158019477a434e7486232c))
+* **file-pr:** deprecate skill, use mattpocock `pr` instead ([66299f4](https://github.com/umaraziz0/skills/commit/66299f48c71bfee12fc0660b14e8e40537d5f6ec))
+* **update-docs:** add `disable-model-invocation: true` ([e87aa93](https://github.com/umaraziz0/skills/commit/e87aa9319d3564eb87d2df833c33fe1e403defd3))
+
 ## [3.1.0](https://github.com/umaraziz0/skills/compare/v3.0.0...v3.1.0) (2026-11-14)
 
 
